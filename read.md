@@ -1,3 +1,5 @@
+2:02:20 : jave projet setup with grade lovepreet singh video
+
 ## All Math: Ratio and proportions, LCM, HCF and GCD, Euclid's Algorithm, Factorial, Prime no, Logarithms, Sieve of Eratosthenes, Fibonacci Sequence, Quadratic equations (done), Set, Relation and function, Matrix, Graph (basic) and vector, Arithmetic progression and geometric progression, permutation and combination, linear equation, boolean algebra, statistics and probability (basic), calculus 1, bitwise operators and number theory, geometry and trigonometry
 
 ## SDE Essential: Boolean Algebra & Logic, Linear Equation, Statistics and Probability (basic), Geometry and Trigonometry

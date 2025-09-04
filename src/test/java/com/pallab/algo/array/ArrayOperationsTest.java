@@ -1,4 +1,3 @@
-home/pallab/Personal/algo-java/src/test/java/com/pallab/algo/array/ArrayOperationsTest.java
 package com.pallab.algo.array;
 
 import org.junit.jupiter.api.Test;

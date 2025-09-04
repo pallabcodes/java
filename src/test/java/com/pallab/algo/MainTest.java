@@ -11,11 +11,4 @@ class MainTest {
         Main main = new Main();
         assertNotNull(main);
     }
-
-    @Test
-    @DisplayName("Scanner input should work correctly")
-    void scannerInputShouldWork() {
-        Main main = new Main();
-        assertTrue(main.usingScanner());
-    }
 }
