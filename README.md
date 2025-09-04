@@ -104,7 +104,7 @@ backend-service/
 
 ### Environment Variables
 
-```bash
+   ```bash
 export SPRING_PROFILES_ACTIVE=production
 export SERVER_PORT=8080
 export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/backend
