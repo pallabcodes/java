@@ -1,0 +1,84 @@
+plugins {
+    id 'application'
+    id 'java'
+    id 'org.springframework.boot' version '3.2.2'
+    id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+    id 'org.springdoc.openapi-gradle-plugin' version '1.8.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    lombokVersion = "1.18.30"
+    springDocVersion = "2.2.0"
+    mapstructVersion = "1.5.5.Final"
+    testcontainersVersion = "1.19.3"
+    jacksonVersion = "2.16.0"
+    guavaVersion = "32.1.3-jre"
+}
+
+dependencies {
+    // Spring Boot Core
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    
+    // Spring Cloud for Netflix ecosystem compatibility
+    implementation 'org.springframework.cloud:spring-cloud-starter-bootstrap:4.1.1'
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign:4.1.0'
+    
+    // Netflix Production Dependencies
+    implementation 'com.netflix.spectator:spectator-reg-micrometer:1.7.0'
+    implementation 'io.micrometer:micrometer-registry-prometheus:1.12.0'
+    implementation 'io.micrometer:micrometer-tracing-bridge-brave:1.2.0'
+    
+    // Resilience4j for Circuit Breaker and Retry
+    implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.1.0'
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.1.0'
+    implementation 'io.github.resilience4j:resilience4j-retry:2.1.0'
+    implementation 'io.github.resilience4j:resilience4j-bulkhead:2.1.0'
+    
+    // API Documentation
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springDocVersion}"
+    
+    // JSON Processing
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
+    
+    // Mapping & Utilities
+    implementation 'org.modelmapper:modelmapper:3.2.0'
+    implementation 'org.mapstruct:mapstruct:${mapstructVersion}'
+    implementation "com.google.guava:guava:${guavaVersion}"
+    implementation 'org.apache.commons:commons-lang3:3.14.0'
+    
+    // Lombok
+    implementation "org.projectlombok:lombok:${lombokVersion}"
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+    
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:junit-jupiter:${testcontainersVersion}'
+    testImplementation 'org.mockito:mockito-core:5.8.0'
+    testImplementation 'org.assertj:assertj-core:3.24.2'
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+application {
+    mainClass = 'netflix.generics.JavaGenericsApplication'
+}

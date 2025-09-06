@@ -1,0 +1,12 @@
+rootProject.name = 'java-streams-essentials'
+
+// Project metadata
+description = 'Netflix Production-Grade Java Streams Essentials'
+group = 'netflix.streams'
+version = '1.0.0'
+
+// Build configuration
+gradle.settingsEvaluated {
+    println "Building ${rootProject.name} v${rootProject.version}"
+    println "Description: ${rootProject.description}"
+}
