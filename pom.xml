@@ -13,13 +13,18 @@
     <groupId>com.backend</groupId>
     <artifactId>backend-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
     <name>backend-service</name>
     <description>Netflix-style backend service with enterprise architecture</description>
     
     <properties>
         <java.version>21</java.version>
     </properties>
-    
+
+    <modules>
+        <module>NetflixMathLibrary</module>
+    </modules>
+
     <dependencies>
         <!-- Spring Boot Starters -->
         <dependency>
