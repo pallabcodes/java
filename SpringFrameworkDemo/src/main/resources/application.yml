@@ -1,0 +1,276 @@
+# Netflix Spring Framework Demo - Application Configuration
+# This configuration demonstrates production-grade Spring Boot configuration
+
+# Application Information
+spring:
+  application:
+    name: netflix-spring-framework-demo
+    version: 1.0.0
+  
+  # Profile Configuration
+  profiles:
+    active: dev
+    include: common
+  
+  # Database Configuration
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+  
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    clean-disabled: false
+    out-of-order: false
+    baseline-version: 0
+    baseline-description: Initial baseline
+  
+  # H2 Console Configuration
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  
+  # Cache Configuration
+  cache:
+    type: simple
+    cache-names:
+      - users
+      - user-profiles
+  
+  # Task Execution Configuration
+  task:
+    execution:
+      pool:
+        core-size: 8
+        max-size: 16
+        queue-capacity: 100
+        keep-alive: 60s
+      thread-name-prefix: async-task-
+    scheduling:
+      pool:
+        size: 4
+      thread-name-prefix: scheduled-task-
+
+# Server Configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /
+    session:
+      timeout: 30m
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 10
+    connection-timeout: 20000
+    max-connections: 8192
+    accept-count: 100
+    max-http-post-size: 2MB
+    max-http-form-post-size: 2MB
+
+# Management and Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env,configprops,beans,mappings
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      version: ${spring.application.version}
+  health:
+    defaults:
+      enabled: true
+    db:
+      enabled: true
+    diskspace:
+      enabled: true
+      threshold: 100MB
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.netflix.springframework.demo: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}] - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}] - %msg%n"
+  file:
+    name: logs/spring-framework-demo.log
+    max-size: 10MB
+    max-history: 30
+    total-size-cap: 1GB
+
+# External API Configuration
+app:
+  external-api:
+    base-url: http://localhost:8080
+    timeout: 30s
+    connection-timeout: 10s
+    read-timeout: 30s
+    write-timeout: 30s
+    max-connections: 100
+    max-idle-time: 60s
+    retry:
+      max-attempts: 3
+      delay: 1000ms
+      multiplier: 2.0
+    circuit-breaker:
+      failure-rate-threshold: 50
+      wait-duration-in-open-state: 60s
+      sliding-window-size: 10
+      minimum-number-of-calls: 5
+
+# Security Configuration
+security:
+  cors:
+    allowed-origins: "*"
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+    allowed-headers: "*"
+    allow-credentials: false
+    max-age: 3600
+
+# Validation Configuration
+validation:
+  enabled: true
+  fail-fast: true
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+  metrics:
+    enabled: true
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    enabled: false
+  logging:
+    enabled: true
+    level: INFO
+
+---
+# Development Profile
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:testdb
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: create-drop
+
+logging:
+  level:
+    com.netflix.springframework.demo: DEBUG
+    org.springframework.web: DEBUG
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:postgresql://localhost:5432/netflix_demo
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:netflix_user}
+    password: ${DB_PASSWORD:netflix_password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+logging:
+  level:
+    root: WARN
+    com.netflix.springframework.demo: INFO
+
+# Stripe Payment Configuration
+stripe:
+  api:
+    key: ${STRIPE_SECRET_KEY:sk_test_51234567890abcdef}
+    publishable-key: ${STRIPE_PUBLISHABLE_KEY:pk_test_51234567890abcdef}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_1234567890abcdef}
+  payment:
+    currency: usd
+    description: "Netflix Spring Framework Demo Payment"
+    metadata:
+      application: "netflix-spring-framework-demo"
+      version: "1.0.0"
+  security:
+    jwt:
+      secret: ${JWT_SECRET:netflix-jwt-secret-key-for-payment-security}
+      expiration: 3600000 # 1 hour in milliseconds
+  retry:
+    max-attempts: 3
+    delay: 1000 # 1 second in milliseconds
+    backoff-multiplier: 2.0
+  file:
+    name: /var/log/netflix-demo/application.log
+
+server:
+  port: 8080
+
+---
+# Test Profile
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+logging:
+  level:
+    com.netflix.springframework.demo: DEBUG
+    org.springframework.test: DEBUG

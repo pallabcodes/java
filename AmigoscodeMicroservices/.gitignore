@@ -1,227 +1,7 @@
-# Compiled class files
-*.class
-
-# Log files
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# Virtual machine crash logs
-hs_err_pid*
-replay_pid*
-
-# Gradle
-.gradle/
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-# Gradle Wrapper
-gradle-wrapper.properties
-
-# IntelliJ IDEA
-.idea/
-*.iws
-*.iml
-*.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-# Eclipse
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-
-# NetBeans
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-# VS Code
-.vscode/
-
-# Mac
-.DS_Store
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# Linux
-*~
-
-# Temporary files
-*.tmp
-*.temp
-*.swp
-*.swo
-*~
-
-# Application specific
-application-local.properties
-application-dev.properties
-application-prod.properties
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Logs
-logs/
-*.log
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# nyc test coverage
-.nyc_output
-
-# Dependency directories
-node_modules/
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# dotenv environment variables file
-.env
-.env.test
-.env.production
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# Next.js build output
-.next
-
-# Nuxt.js build / generate output
-.nuxt
-dist
-
-# Gatsby files
-.cache/
-public
-
-# Storybook build outputs
-.out
-.storybook-out
-
-# Temporary folders
-tmp/
-temp/
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Spring Boot
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-# Maven
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
-buildNumber.properties
-.mvn/timing.properties
-.mvn/wrapper/maven-wrapper.jar
-
-# JVM crash logs
-hs_err_pid*
-
-# Application specific files
-application-local.yml
-application-local.yaml
-application-dev.yml
-application-dev.yaml
-application-prod.yml
-application-prod.yaml
-
-# Test results
-TEST-*.xml
-test-results/
-build/reports/tests/
-
-# Generated sources
-generated/
-
 # ===========================================
-# NETFLIX PRODUCTION-GRADE MULTI-PROJECT .GITIGNORE
+# NETFLIX PRODUCTION-GRADE MICROSERVICES .GITIGNORE
 # ===========================================
-# This .gitignore is designed for a multi-project workspace
-# containing Java, Kotlin, Spring Boot, Maven, Gradle, and other projects
+# This .gitignore is designed for a Netflix production-grade microservices platform
 # ===========================================
 
 # ===========================================
@@ -255,22 +35,6 @@ buildNumber.properties
 
 # Maven wrapper (keep the jar)
 !.mvn/wrapper/maven-wrapper.jar
-
-# ===========================================
-# GRADLE
-# ===========================================
-# Gradle build directories
-.gradle/
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-# Gradle Wrapper
-gradle-wrapper.properties
-
-# Gradle daemon
-.gradle/daemon/
 
 # ===========================================
 # SPRING BOOT
@@ -370,6 +134,7 @@ log/
 application.log
 spring.log
 netflix.log
+microservices.log
 
 # ===========================================
 # IDEs & EDITORS
@@ -510,33 +275,33 @@ netflix-security/
 netflix-keys/
 
 # ===========================================
-# PROJECT SPECIFIC
+# MICROSERVICES SPECIFIC
 # ===========================================
-# Spring Framework Demo
-SpringFrameworkDemo/target/
-SpringFrameworkDemo/.idea/
-SpringFrameworkDemo/*.iml
+# Service discovery
+eureka-server/
+service-registry/
 
-# Netflix Math Library
-NetflixMathLibrary/target/
-NetflixMathLibrary/.idea/
-NetflixMathLibrary/*.iml
+# API Gateway
+api-gateway/
+gateway/
 
-# Amigoscode Microservices
-AmigoscodeMicroservices/target/
-AmigoscodeMicroservices/.idea/
-AmigoscodeMicroservices/*.iml
+# Config Server
+config-server/
+config/
 
-# Producer Consumer
-ProducerConsumer/build/
-ProducerConsumer/.gradle/
-ProducerConsumer/.idea/
-ProducerConsumer/*.iml
+# Shared libraries
+shared-libraries/
+common/
 
-# Kotlin Basic
-KotlinBasic/.idea/
-KotlinBasic/*.iml
-KotlinBasic/out/
+# Monitoring
+monitoring/
+metrics/
+tracing/
+
+# Deployment
+deployment/
+k8s/
+kubernetes/
 
 # ===========================================
 # BUILD TOOLS
@@ -586,5 +351,5 @@ deployment/
 *.deployment
 
 # ===========================================
-# END OF NETFLIX PRODUCTION-GRADE .GITIGNORE
+# END OF NETFLIX PRODUCTION-GRADE MICROSERVICES .GITIGNORE
 # ===========================================
