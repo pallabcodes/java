@@ -1,0 +1,149 @@
+# Netflix Production-Grade Productivity Platform Configuration
+# This configuration demonstrates Netflix production standards for productivity applications
+
+spring:
+  application:
+    name: netflix-productivity-platform
+  profiles:
+    active: dev
+  
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/productivity_platform
+    username: productivity_user
+    password: productivity_password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+  
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+  
+  # Security Configuration
+  security:
+    jwt:
+      secret: netflix-productivity-jwt-secret-key
+      expiration: 3600000 # 1 hour
+      refresh-expiration: 86400000 # 24 hours
+  
+  # Cache Configuration
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=1h
+  
+  # Mail Configuration
+  mail:
+    host: localhost
+    port: 587
+    username: productivity@netflix.com
+    password: password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# Server Configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+
+# Management Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    com.netflix.productivity: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Multi-tenancy Configuration
+multitenancy:
+  default-tenant: default
+  tenant-header: X-Tenant-ID
+  tenant-parameter: tenant
+  tenant-path-pattern: "^/api/tenants/([^/]+)/.*"
+  subdomain-pattern: "^([^.]+)\\..*"
+  reserved-tenants:
+    - default
+    - admin
+    - system
+    - public
+    - api
+    - www
+    - app
+    - portal
+
+# Productivity Platform Configuration
+productivity:
+  platform:
+    name: Netflix Productivity Platform
+    version: 1.0.0
+    description: Netflix Production-Grade Multi-Tenant Productivity Platform
+    features:
+      - issue-tracking
+      - project-management
+      - workflow-automation
+      - real-time-collaboration
+      - advanced-search
+      - reporting-analytics
+      - integration-api
+      - mobile-support
+    limits:
+      max-projects-per-tenant: 100
+      max-issues-per-project: 10000
+      max-members-per-project: 100
+      max-attachments-per-issue: 10
+      max-comments-per-issue: 1000
+    security:
+      password-min-length: 8
+      password-require-special-chars: true
+      session-timeout: 3600
+      max-login-attempts: 5
+      lockout-duration: 900
