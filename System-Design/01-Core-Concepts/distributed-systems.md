@@ -1287,3 +1287,26 @@ public class DistributedSystemsMetrics {
 **Version**: 1.0.0  
 **Maintainer**: Netflix SDE-2 Team  
 **Status**: ✅ Production Ready
+
+## Deep Dive Appendix
+
+### Adversarial scenarios
+- Network partitions, reordering, and arbitrary delays
+- Process pauses and GC; clock skew and drift
+- Byzantine style behaviors at boundaries
+
+### Internal architecture notes
+- Failure detectors, leases, and consensus assumptions
+- Idempotency, deduplication, and commutative operations
+- State machines and event logs as source of truth
+
+### Validation and references
+- Jepsen style tests and chaos across layers
+- Formal invariants and property based testing
+- Literature on CAP, FLP, partial synchrony
+
+### Trade offs revisited
+- Availability vs consistency; latency vs durability
+
+### Implementation guidance
+- Prefer safe assumptions; design for idempotency; document failure semantics

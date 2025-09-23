@@ -977,3 +977,154 @@ public class CacheMetrics {
 **Version**: 1.0.0  
 **Maintainer**: Netflix SDE-2 Team  
 **Status**: ✅ Production Ready
+
+## 🧭 Production Readiness Addendum
+
+### Techniques and where to use
+- Cache-aside for read heavy, simple ownership by app
+- Write-through for correctness sensitive data
+- Write-behind for high write throughput (with durable queue)
+- Refresh-ahead for predictable hot keys
+- Local (Caffeine) for ultra hot small working sets; Redis/Memcached for shared cache; CDN for edge
+
+### Trade-offs
+- Consistency vs freshness: stale reads acceptable? choose TTL/refresh
+- Latency: local L1 nanosecond reads vs remote cache RTT; cross AZ/region adds tail risk
+- Network: egress costs, MTU/fragmentation, packet loss sensitivity, cluster topology refresh
+- Process: GC pauses can stall refreshers and single-flight; prefer non-blocking refresh and timeouts
+- OS resources: memory pressure drives kernel eviction and swap; pin critical caches, set container limits
+- Storage: CDN and disk caches trade latency for capacity; ensure cold-start behavior
+- Cost: RAM footprint, cross-region bandwidth, CDN egress; budget by keyspace
+- Complexity: tiered caches, invalidation workflows, and schema versioning increase operational burden
+- Serialization cost vs value size; compression saves bandwidth but adds CPU
+
+### Failure modes and mitigations
+- Cache stampede: use single flight, jittered TTL, probabilistic early refresh
+- Hot keys: sharded keys, read replication, layered local+remote cache
+- Thundering herd on invalidation: stagger refresh, prewarm
+
+### Sizing and capacity
+- Target hit rate from SLO; compute memory = avg_value_size * entries * overhead
+- Choose eviction (LRU/LFU) based on access patterns; measure reuse distance
+
+### Verification
+- Replay traces to validate hit rate improvement and tail latency
+- Chaos: drop cache node, simulate network latency; verify fallback and error budget
+
+### Production checklist
+- Metrics: hit/miss, latency, value sizes, evictions, keyspace cardinality
+- Alerts: hit rate drops, eviction spikes, backend amplification
+- Runbooks: stampede mitigation, hot key handling, warmup procedures
+
+## 📦 Caching Techniques (Internal)
+
+### Key design
+- Hierarchical keys (entity:type:id) with version suffixes for schema evolution
+- Tenant and locality encoded (`{tenant}:{region}:entity:v2:{id}`) to aid sharding and CDN mapping
+- Hash tags for Redis Cluster multi key ops
+
+### Invalidation strategies
+- Write-through invalidate dependent keys synchronously
+- Event-driven invalidation via change streams; idempotent listeners
+- Bloom filters to avoid cold misses after mass invalidation
+
+### Stampede protection
+- Single flight per key (request coalescing)
+- Probabilistic early refresh (serve stale-while-revalidate) with jittered TTL
+- Token bucket to throttle backend refetch under burst
+
+### Tiered caching
+- L1 Caffeine per instance with small TTL and max size
+- L2 Redis/Memcached shared cache with longer TTL
+- L3 CDN/edge for static and semi-static payloads
+
+### Serialization and compression
+- Use compact binary (Kryo/Protostuff/CBOR) for large objects; JSON for interoperability
+- Snappy/LZ4 for values > threshold; measure CPU vs latency trade-off
+
+### Consistency patterns
+- Read-through with write-behind for tolerate-stale domains; conflict resolution on write
+- Read-your-writes guarantee using session sticky L1 or version tokens
+- Negative caching for 404/empty results with short TTL
+
+### Hot key management
+- Detect via top-k heavy hitter metrics
+- Split hot key into shards (`key:{shard}`) with aggregator on read
+- Prewarm and pin in L1 with higher priority
+
+### Prewarming and warming
+- Warm popular keys on deploy from last 24h access logs
+- On autoscale up, slow start cache priming to avoid backend thundering herd
+
+### TTL policy
+- Base TTL from freshness SLO; add ± jitter to avoid synchronized expiry
+- Use soft TTL + background refresh to hide backend latency spikes
+
+### Failure handling
+- On cache backend outage, fallback to L1 only with reduced TTL and circuit breaker to protect DB
+- Partial data strategy: serve last-known-good with banner; queue repair
+
+### Observability
+- Per-keyspace dashboards: hit rate, latency, size, evictions, skew, stampede rate
+- Tracing attributes: cache.hit=true/false, tier=L1/L2/L3, keyspace, value_size
+
+### Security and privacy
+- Classify data; avoid caching PII unless encrypted and policy-approved
+- Enforce per-tenant isolation in keys and ACLs
+
+### Playbooks
+- Hot key playbook: detect, shard, prewarm, validate tail latency
+- Mass invalidation playbook: phased invalidate, monitor backend, rollback plan
+
+## 📊 Technique Trade-offs Matrix (Internal)
+
+| Technique | Latency | Consistency/Freshness | Cost | Blast Radius | Complexity | Notes |
+|---|---|---|---|---|---|---|
+| L1 Caffeine | lowest | stale between instances | RAM on each node | per instance | low | great for ultra hot sets; protect with size/TTL |
+| Redis standalone | low | eventual per TTL | RAM + network | single node | medium | simple, acceptable for non-critical consistency |
+| Redis Cluster | low-med | eventual per TTL | RAM + cross-node | per slot group | medium | use hash tags, pipeline per node |
+| Memcached | low | eventual per TTL | RAM + network | per node | low | simple KV, good for ephemeral data |
+| CDN/Edge | low for edge | eventual/invalidation lag | egress + CDN | per POP | medium | great for static/semi-static content |
+| Write-through | adds write latency | strongest | storage + cache | per write path | medium | suitable for correctness sensitive |
+| Write-behind | hides write latency | weaker until flush | storage + queue | queue backlog | high | require durable queue and replay |
+| Refresh-ahead | smoother | good freshness | CPU/background | per keyspace | medium | combine with jittered TTL |
+| Negative cache | lowest | short TTL | minimal | per key | low | avoid repeated misses |
+
+### Quantified trade offs
+- Latency budgets: L1 in process reads typically sub 0.1 ms, Redis p50 0.5 to 1.5 ms intra AZ and p99 2 to 5 ms, cross AZ adds 1 to 3 ms, cross region adds 50 to 100 ms. CDN edge hits 5 to 30 ms, origin shield hits 30 to 80 ms.
+- Hit rate impact: each 10 percentage point increase in hit rate usually reduces origin load by roughly the same percentage for read heavy traffic. Tail latency improves non linearly when hit rate exceeds 90 percent due to fewer backend queueing spikes.
+- Cost: Redis RAM cost approximates value_size × entries × 1.3 overhead. Cross region cache adds egress per miss and replication sync costs. CDN egress dominated by cache miss path; budget origin bandwidth as misses_per_sec × payload_size.
+- Memory sizing: memory_bytes ≈ entries × (avg_value_bytes + key_bytes + metadata_overhead). For Redis, plan 30 percent overhead for allocator and structures; for Memcached plan 20 percent slab overhead on average.
+- Compression thresholds: enable LZ4 or Snappy for values greater than 1 KB to 4 KB depending on CPU budget. Expect 30 percent to 60 percent size reduction with 10 percent to 25 percent added CPU per op.
+- TTL policy: for items with update interval U, set TTL between 0.5U and 0.8U with ±10 percent jitter to balance freshness and stampede risk. For negative caching, TTL 1 to 5 seconds avoids masking new arrivals.
+- Stampede control: single flight reduces backend QPS under miss burst by 70 percent to 95 percent on hot keys. Probabilistic early refresh set at 5 percent to 10 percent before TTL expiration smooths refresh load.
+- Hot key thresholds: treat any key over 1 percent of tier QPS as hot. For top k heavy hitters where k ≈ 100 to 1000, prewarm and pin in L1 with shorter TTL in L2.
+
+## Deep Dive Appendix
+
+### Adversarial scenarios
+- Mass invalidation and synchronized expiry causing stampede and backend overload
+- Cross region caches with inconsistent TTL leading to user visible staleness
+- Serialization format drift causing cache poisoning across versions
+- Hot key bursts after release or marketing events
+
+### Internal architecture notes
+- Tiered L1 L2 L3 caches with ownership and clear invalidation channels
+- Single flight coordinator and background refresh executors with jitter
+- Hash tags for Redis Cluster co location, pipelining and Lua for atomic multi key ops
+- Per keyspace SLOs drive TTLs, eviction policies, and refresh budgets
+
+### Validation and references
+- Trace replay benchmarks to measure hit rate and tail reductions with and without techniques
+- Fault injection: drop cache node, raise RTT, packet loss; validate fallback and breaker behavior
+- Literature comparisons on stampede mitigation and probabilistic early refresh
+
+### Trade offs revisited
+- Freshness vs hit rate vs backend load, quantified for each tier
+- Compression thresholds vs CPU budget; serialization format size vs latency
+- Cost of RAM and egress vs benefits in tail latency and backend savings
+
+### Implementation guidance
+- Provide paved road modules for key design, single flight, refresh ahead, and invalidation
+- Canary new TTL policies on 5 percent traffic; auto rollback on backend amplification
+- Maintain warmup playbooks and top k hot key detection with automated sharding

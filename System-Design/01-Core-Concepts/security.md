@@ -761,3 +761,26 @@ public class SecurityMetrics {
 **Version**: 1.0.0  
 **Maintainer**: Netflix SDE-2 Team  
 **Status**: ✅ Production Ready
+
+## Deep Dive Appendix
+
+### Adversarial scenarios
+- Key compromise, replay, and downgrade attacks
+- Token forgery and audience confusion across services
+- Secret sprawl and rotation failures
+
+### Internal architecture notes
+- mTLS with SPIFFE identities and automated cert rotation
+- JWT/OAuth2 with audience, issuer, and scope validations
+- Secret management with KMS, envelope encryption, and least privilege
+
+### Validation and references
+- Pen tests, fuzzing of authn/z, chaos on CA and IdP
+- Formal policy checks and conformance tests
+- Literature on zero trust and modern auth protocols
+
+### Trade offs revisited
+- Crypto strength vs performance; rotation frequency vs operational risk
+
+### Implementation guidance
+- Enforce paved road libraries and gateways; rotate keys regularly; monitor for anomalies

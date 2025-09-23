@@ -6,6 +6,34 @@ This comprehensive system design knowledge base demonstrates **Netflix productio
 
 **Target Audience**: Senior Backend Engineers, System Engineers, and Principal Engineers transitioning from C/C++ to modern distributed systems.
 
+## 📚 **COVERAGE INDEX**
+
+| Concept | Doc | Status |
+|---|---|---|
+| Proxy vs Reverse Proxy | [proxy-vs-reverse-proxy.md](01-Core-Concepts/proxy-vs-reverse-proxy.md) | complete |
+| DNS | [dns.md](01-Core-Concepts/dns.md) | complete |
+| API Gateway | [api-gateway.md](01-Core-Concepts/api-gateway.md) | complete |
+| Load Balancing | [load-balancing.md](01-Core-Concepts/load-balancing.md) | complete |
+| Caching | [caching.md](01-Core-Concepts/caching.md) | complete |
+| Distributed Caching | [distributed-caching.md](01-Core-Concepts/distributed-caching.md) | complete |
+| Database Types | [database-types.md](01-Core-Concepts/database-types.md) | complete |
+| SQL vs NoSQL | [sql-vs-nosql.md](01-Core-Concepts/sql-vs-nosql.md) | complete |
+| Database Indexes | [database-indexes.md](01-Core-Concepts/database-indexes.md) | complete |
+| Consistency Patterns | [consistency-patterns.md](01-Core-Concepts/consistency-patterns.md) | complete |
+| HeartBeats | [heartbeats.md](01-Core-Concepts/heartbeats.md) | complete |
+| Circuit Breaker | [circuit-breaker.md](01-Core-Concepts/circuit-breaker.md) | complete |
+| Idempotency | [idempotency.md](01-Core-Concepts/idempotency.md) | complete |
+| Database Scaling | [database-scaling.md](01-Core-Concepts/database-scaling.md) | complete |
+| Data Replication | [data-replication.md](01-Core-Concepts/data-replication.md) | complete |
+| Data Redundancy | [data-redundancy.md](01-Core-Concepts/data-redundancy.md) | complete |
+| Database Architectures | [database-architectures.md](01-Core-Concepts/database-architectures.md) | complete |
+| Failover | [failover.md](01-Core-Concepts/failover.md) | complete |
+| Bloom Filters | [bloom-filters.md](01-Core-Concepts/bloom-filters.md) | complete |
+| Message Queues | [message-queues.md](01-Core-Concepts/message-queues.md) | complete |
+| WebSockets | [websockets.md](01-Core-Concepts/websockets.md) | complete |
+| Checksums | [checksums.md](01-Core-Concepts/checksums.md) | complete |
+| Microservices Guidelines | [microservices-guidelines.md](01-Core-Concepts/microservices-guidelines.md) | complete |
+
 ## 🏗️ **SYSTEM DESIGN CONCEPTS MATRIX**
 
 | Concept | Implementation Layer | Netflix Production Status | Code Examples |
@@ -30,6 +58,20 @@ This comprehensive system design knowledge base demonstrates **Netflix productio
 | **Data Partitioning** | Application + Infrastructure | ✅ Production | Range, Hash, Directory |
 | **Content Delivery** | Infrastructure | ✅ Production | CDN, Edge Computing |
 | **Real-time Systems** | Application + Infrastructure | ✅ Production | WebSockets, Server-Sent Events |
+
+## 🔁 **ALTERNATIVES MATRIX (BREADTH AT A GLANCE)**
+
+| Domain | Alternatives | When to choose |
+|---|---|---|
+| Load Balancing | Round Robin, Weighted RR, Least Connections, Power of Two Choices, Consistent Hashing | RR for homogenous; Weighted for unequal; Least Conn for long lived; P2C for low overhead fairness; Consistent hashing for affinity |
+| Caching | Caffeine local, Redis standalone, Redis Cluster, Memcached, CDN | Local for hot small sets; Redis for shared low latency; Cluster for scale; Memcached for simple KV; CDN for edge content |
+| Databases | Hash sharding, Range sharding, Replication, Partitioning, Advisory locks | Hash for uniform keys; Range for scans/time; Replication for reads/HA; Partitioning for very large tables; Advisory locks for DB scoped mutex |
+| Messaging | Kafka idempotent + EOS, RabbitMQ confirms | Kafka for streams/state; Rabbit for work queues and routing |
+| Rate Limiting | Token bucket, Sliding window log, Leaky bucket at gateway | Token bucket for bursts; Sliding window for precision; Leaky bucket for smoothing at edge |
+| Security | JWT/OAuth2, SPIFFE mTLS, Key rotation, Fine grained RBAC | JWT for user auth; SPIFFE for service identity; Rotation for crypto hygiene; RBAC/ABAC for least privilege |
+| Observability | OTel logs bridge, Exemplars, SLO alert rules | Bridge for correlation; Exemplars for trace-to-metric; Alerts for SLOs |
+| Locking | Redis Lua, Zookeeper mutex, etcd lock, Fencing tokens | Redis for simple TTL locks; ZooKeeper/etcd for strict semantics; Fencing for split brain safety |
+| API | REST, GraphQL federation, gRPC streaming | REST for broad clients; Federation for product graphs; gRPC streaming for realtime/backpressure |
 
 ## 📚 **KNOWLEDGE BASE STRUCTURE**
 

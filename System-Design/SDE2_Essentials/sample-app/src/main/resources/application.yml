@@ -1,0 +1,43 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    # using routing datasource bean, targets defined in config
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          secret-key: secretsecretsecretsecret
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      service: sde2-essentials-sample
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+    metrics:
+      export:
+        enabled: false
+
+grpc:
+  server:
+    port: 9090
+
+logging:
+  level:
+    root: INFO
+  pattern:
+    console: "%msg%n"
+  logback:
+    rollingpolicy:
+      max-history: 7
+

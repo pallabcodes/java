@@ -1266,6 +1266,13 @@ public class HighAvailabilityMetrics {
 - **Meaningful**: Return meaningful health status
 - **Monitoring**: Monitor health check results
 
+### **5. Distributed Locking Integration**
+- **When to use**: Guard scarce shared resources or one off schedulers
+- **How**: Prefer Redis SET NX PX with Lua unlock or Zookeeper Curator mutex
+- **Fencing**: Issue fencing tokens on acquire and validate on the write path
+- **Renewal**: Use short TTLs and renew while holding; fail closed on renewal errors
+- **See**: `distributed-locking.md`, `redis-distributed-lock.java`, `zookeeper-distributed-lock.java`, `fencing-token-service.java`, `redis-lock-renewer.java`
+
 ## 🔍 **TROUBLESHOOTING**
 
 ### **Common Issues**
@@ -1293,3 +1300,27 @@ public class HighAvailabilityMetrics {
 **Version**: 1.0.0  
 **Maintainer**: Netflix SDE-2 Team  
 **Status**: ✅ Production Ready
+
+## Deep Dive Appendix
+
+### Adversarial scenarios
+- Multi az brownouts and partial packet loss
+- Dependency failures with hidden head of line blocking
+- Retry storms and cascading timeouts across meshes
+
+### Internal architecture notes
+- Redundancy at each layer with bulkheads and circuit breakers
+- Load shedding and degraded modes with feature flags
+- SLO based budgeting and automated rollback hooks
+
+### Validation and references
+- Chaos experiments at dependency and infra layers
+- Synthetic traffic and canary analysis
+- Literature on fault tolerance and resilience patterns
+
+### Trade offs revisited
+- Redundancy cost vs availability gains; graceful degradation vs complexity
+
+### Implementation guidance
+- Define critical user journeys and degradations; practice incident runbooks
+- Automate failure injection in staging and periodically in production

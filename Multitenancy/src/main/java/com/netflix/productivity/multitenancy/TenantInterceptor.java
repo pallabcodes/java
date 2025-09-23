@@ -6,6 +6,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.slf4j.MDC;
+import jakarta.persistence.EntityManager;
+import org.hibernate.Filter;
+import org.hibernate.Session;
 
 import java.util.UUID;
 
@@ -38,10 +42,12 @@ public class TenantInterceptor implements HandlerInterceptor {
 
     private final TenantResolver tenantResolver;
     private final TenantContext tenantContext;
+    private final EntityManager entityManager;
 
-    public TenantInterceptor(TenantResolver tenantResolver, TenantContext tenantContext) {
+    public TenantInterceptor(TenantResolver tenantResolver, TenantContext tenantContext, EntityManager entityManager) {
         this.tenantResolver = tenantResolver;
         this.tenantContext = tenantContext;
+        this.entityManager = entityManager;
     }
 
     /**
@@ -58,21 +64,34 @@ public class TenantInterceptor implements HandlerInterceptor {
             // Generate request ID for tracing
             String requestId = generateRequestId();
             tenantContext.setCurrentRequestId(requestId);
+            MDC.put("requestId", requestId);
             
             // Resolve tenant from request
             String tenantId = tenantResolver.resolveTenant(request);
             tenantContext.setCurrentTenant(tenantId);
+            MDC.put("tenantId", tenantId);
+
+            // Enable Hibernate tenant filter per-request
+            try {
+                Session session = entityManager.unwrap(Session.class);
+                Filter filter = session.enableFilter("tenantFilter");
+                filter.setParameter("tenantId", tenantId);
+            } catch (Exception ignored) {
+                // If EM not bound yet (non-transactional path), skip; JPA ops will still set tenant in repos
+            }
             
             // Extract user information from request
             String userId = extractUserId(request);
             if (StringUtils.hasText(userId)) {
                 tenantContext.setCurrentUser(userId);
+                MDC.put("userId", userId);
             }
             
             // Extract role information from request
             String role = extractUserRole(request);
             if (StringUtils.hasText(role)) {
                 tenantContext.setCurrentRole(role);
+                MDC.put("role", role);
             }
             
             // Validate tenant context

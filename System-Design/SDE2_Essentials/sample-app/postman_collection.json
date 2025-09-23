@@ -1,0 +1,40 @@
+{
+  "info": {
+    "name": "SDE2 Essentials Sample",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Dev Token",
+      "request": {
+        "method": "GET",
+        "url": "http://localhost:8080/dev/token?scope=accounts:read"
+      }
+    },
+    {
+      "name": "Get Account a1",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.sendRequest('http://localhost:8080/dev/token?scope=accounts:read', function (err, res) {",
+              "  pm.environment.set('token', res.text());",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"}
+        ],
+        "url": "http://localhost:8080/accounts/a1"
+      }
+    }
+  ]
+}
+
+

@@ -819,3 +819,26 @@ public class FaultToleranceMetrics {
 **Version**: 1.0.0  
 **Maintainer**: Netflix SDE-2 Team  
 **Status**: ✅ Production Ready
+
+## Deep Dive Appendix
+
+### Adversarial scenarios
+- Retry storms, bulkhead starvation, and fallback exhaustion
+- Network partitions and partial outages
+- State corruption after partial side effects
+
+### Internal architecture notes
+- Timeouts, retries with budgets, circuit breakers, bulkheads
+- Idempotent operations and sagas for partial failure recovery
+- Load shedding and graceful degradation paths
+
+### Validation and references
+- Fault injection across layers; breaker trip and recovery drills
+- Replay tests to verify idempotent effects and compensations
+- Literature on resilience engineering
+
+### Trade offs revisited
+- Resilience overhead vs latency; fallback value vs consistency
+
+### Implementation guidance
+- Provide defaults; set budgets; instrument and alert on degradation

@@ -817,3 +817,26 @@ public class ScalabilityMetrics {
 **Version**: 1.0.0  
 **Maintainer**: Netflix SDE-2 Team  
 **Status**: ✅ Production Ready
+
+## Deep Dive Appendix
+
+### Adversarial scenarios
+- Sudden traffic spikes beyond autoscale response
+- Hot partitions and uneven workload distribution
+- Hidden bottlenecks in stateful dependencies
+
+### Internal architecture notes
+- Horizontal scale units with budgets per service tier
+- Backpressure, queues, and bulkheads to absorb burst
+- Caching, sharding, and async pipelines to decouple
+
+### Validation and references
+- Capacity tests and step load; surge drills
+- Chaos on dependency limits and quotas
+- Literature on queueing theory and scaling laws
+
+### Trade offs revisited
+- Latency vs throughput vs cost; consistency vs partitioning
+
+### Implementation guidance
+- Define scaling SLOs and headroom; pre warm; rate limit at edges

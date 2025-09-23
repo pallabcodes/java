@@ -768,3 +768,26 @@ public class APIDesignMetrics {
 **Version**: 1.0.0  
 **Maintainer**: Netflix SDE-2 Team  
 **Status**: ✅ Production Ready
+
+## Deep Dive Appendix
+
+### Adversarial scenarios
+- Backward incompatible changes breaking clients
+- Overfetch underfetch leading to inefficiency
+- N plus 1 and chatty APIs increasing tail latency
+
+### Internal architecture notes
+- Contract first design with versioning and deprecation policies
+- Pagination, filtering, and batching standards
+- Consistency guarantees and idempotency semantics per endpoint
+
+### Validation and references
+- Contract tests, schema checks, and compatibility gates in CI
+- Load tests with client patterns and replay traces
+- Literature on API evolution and design
+
+### Trade offs revisited
+- Flexibility vs stability; simplicity vs feature richness
+
+### Implementation guidance
+- Provide SDKs and generators; document SLAs; monitor per endpoint budgets

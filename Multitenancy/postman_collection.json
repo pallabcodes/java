@@ -1,0 +1,79 @@
+{
+  "info": {
+    "name": "Netflix Productivity Platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "List Projects",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-Tenant-ID", "value": "tenantA" }],
+        "url": {
+          "raw": "http://localhost:8080/api/projects",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "projects"]
+        }
+      }
+    },
+    {
+      "name": "Create Project",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-Tenant-ID", "value": "tenantA" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tenantId\": \"tenantA\",\n  \"key\": \"PROJ\",\n  \"name\": \"Demo Project\",\n  \"status\": \"PLANNED\",\n  \"type\": \"SOFTWARE\",\n  \"ownerId\": \"user-1\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/projects",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "projects"]
+        }
+      }
+    },
+    {
+      "name": "Create Issue",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-Tenant-ID", "value": "tenantA" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tenantId\": \"tenantA\",\n  \"key\": \"PROJ-1\",\n  \"title\": \"Login fails\",\n  \"status\": \"OPEN\",\n  \"priority\": \"HIGH\",\n  \"type\": \"BUG\",\n  \"projectId\": \"project-1\",\n  \"reporterId\": \"user-1\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/issues",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "issues"]
+        }
+      }
+    },
+    {
+      "name": "Search Issues",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-Tenant-ID", "value": "tenantA" }],
+        "url": {
+          "raw": "http://localhost:8080/api/search/issues?q=login",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "search", "issues"],
+          "query": [{"key": "q", "value": "login"}]
+        }
+      }
+    }
+  ]
+}

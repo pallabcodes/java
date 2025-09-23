@@ -9,6 +9,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -99,6 +102,25 @@ public class MultiTenancyConfig implements WebMvcConfigurer {
     @Primary
     public DataSource dataSource() {
         return new TenantRoutingDataSource(tenantDataSourceProvider);
+    }
+
+    @Bean
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(dataSource);
+        em.setPackagesToScan("com.netflix.productivity");
+        em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+        java.util.Map<String, Object> props = new java.util.HashMap<>();
+        props.put("hibernate.ejb.use_class_enhancer", false);
+        em.setJpaPropertyMap(props);
+        return em;
+    }
+
+    @Bean
+    public JpaTransactionManager transactionManager(LocalContainerEntityManagerFactoryBean emf) {
+        JpaTransactionManager tx = new JpaTransactionManager();
+        tx.setEntityManagerFactory(emf.getObject());
+        return tx;
     }
 
     /**

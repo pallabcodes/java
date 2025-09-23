@@ -1,0 +1,21 @@
+<configuration>
+  <appender name="JSON" class="net.logstash.logback.appender.LoggingEventAsyncDisruptorAppender">
+    <appender-ref ref="ENC"/>
+  </appender>
+
+  <appender name="ENC" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+      <providers>
+        <timestamp/>
+        <pattern><pattern>
+          {"level":"%level","logger":"%logger{36}","message":"%msg","traceId":"%X{traceId}","spanId":"%X{spanId}","service":"sde2-essentials-sample"}
+        </pattern></pattern>
+      </providers>
+    </encoder>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="JSON"/>
+  </root>
+</configuration>
+

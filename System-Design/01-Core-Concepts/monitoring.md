@@ -911,3 +911,26 @@ public class MonitoringMetrics {
 **Version**: 1.0.0  
 **Maintainer**: Netflix SDE-2 Team  
 **Status**: ✅ Production Ready
+
+## Deep Dive Appendix
+
+### Adversarial scenarios
+- Cardinality explosions causing TSDB outages
+- Trace sampling gaps hiding incidents
+- Alert storms and paging fatigue
+
+### Internal architecture notes
+- SLOs and error budgets with multi window multi burn alerts
+- Exemplars linking metrics to traces; logs bridge for correlation
+- Scrape and export pipelines with quotas and backpressure
+
+### Validation and references
+- Load tests on metrics cardinality and ingest
+- Synthetic checks and black box monitoring
+- SRE literature on SLOs and alerting
+
+### Trade offs revisited
+- Observability depth vs cost; sampling vs fidelity
+
+### Implementation guidance
+- Golden signals dashboards and runbooks; cardinality budgets; on call hygiene

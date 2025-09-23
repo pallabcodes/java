@@ -693,3 +693,87 @@ public class RateLimitingMetrics {
 **Version**: 1.0.0  
 **Maintainer**: Netflix SDE-2 Team  
 **Status**: ✅ Production Ready
+
+## 🧭 Techniques, trade-offs, and when to use
+
+### Technique overview
+
+- Token bucket (local): minimal overhead, burst-friendly, single-instance only
+- Token bucket (distributed Redis): global enforcement, hot-key risk, higher latency
+- Sliding window log (Redis ZSET): precise, expensive writes, higher memory
+- Sliding window counter (two-bucket): approximate, cheaper, boundary jitter
+- Leaky bucket at gateway (NGINX/HAProxy): shaping at edge, adds queueing latency
+- Hybrid (edge shaping + service token bucket): smooth at edge, enforce per-user in service
+
+### Trade-offs
+
+- Precision vs cost: sliding-log precise but expensive; token bucket cheaper but approximate
+- Local vs global: local is fast but bypassable; global prevents bypass but adds network and hotspots
+- Fairness: P2C load sharing on keys helps; per-tenant partitioning reduces cross-tenant impact
+
+### When it fails
+
+- Clock skew on multiple nodes for local buckets leads to inconsistent enforcement
+- Redis hot keys cause latency spikes; protection via sharding keys and hash tags
+- Gateway-only limits bypassed by internal calls; add service-side enforcement
+- Distributed lock used in limiter path can amplify contention; prefer Lua scripts for atomicity
+
+## ⚙️ Sizing and capacity planning
+
+- Choose refill rate from SLO RPS and burst policy: `refill = target_rps`
+- Capacity for bursts: `capacity = burst_seconds * target_rps`
+- Redis memory: sliding log approx `N * 16 bytes` per event; sliding counter constant per key
+- Shard keys: include `{tenant}:{principal}`; apply hash tags in Redis Cluster to keep multi-keys colocated
+
+## 🧪 Verification and load testing
+
+- Property tests: prove `allowed <= capacity + refill * t`
+- Replay traffic traces to confirm rejection ratios versus policy
+- Chaos: inject Redis latency and failover, validate graceful degradation to local fallback
+
+## 🔒 Multi-tenant and fairness
+
+- Partition by tenant and by principal; enforce both per-tenant and per-user caps
+- Budget propagation: downstream services honor caller budget to avoid over-enforcement
+
+## 🛡️ Failure modes and mitigations
+
+- Redis unavailable: fall back to local token bucket with stricter caps; emit degraded mode metric
+- Hot key: add per-key jitter on refill, sharded keys, or adaptive bucket split
+- Time window boundary effects: prefer sliding counter/log over fixed window for strict SLOs
+
+## ✅ Production readiness checklist
+
+- Limits defined per route, tenant, principal; defaults and overrides documented
+- Metrics: allow/deny counts, saturation, Redis latency, degraded mode flag
+- Alerts: sustained >80% saturation, Redis P99 > threshold, degraded mode on
+- Dashboards: per-key top offenders, rejection heatmaps, saturation over time
+- Chaos drills: Redis failover, network partition, burst storms
+
+## Deep Dive Appendix
+
+### Adversarial scenarios
+- Coordinated client retries after 429 causing burst amplification
+- Time window boundary effects in sliding windows causing unfairness
+- Clock skew between edge and service leading to inconsistent limits
+- Multi region clients hopping regions to evade per region quotas
+
+### Internal architecture notes
+- Token bucket implemented with monotonic clocks, atomic counters, and jittered refill timers
+- Distributed counters via Redis with Lua scripts for atomic multi key ops and hash tags for co location
+- Edge and service tier budgets with hierarchical enforcement to contain blast radius
+
+### Validation and references
+- Compared token bucket vs leaky bucket vs sliding window on tail latency and precision using replay traces
+- Fault injection for Redis latency and packet loss to verify graceful degradation
+- Cross checked behavior against literature on rate limiting algorithms and fairness analysis
+
+### Trade offs revisited
+- Precision vs cost: sliding window log highest precision at 2x to 5x storage and CPU vs fixed window
+- Fairness vs simplicity: token bucket simple and effective, can be unfair at boundaries without smoothing
+- Multi tenancy: per tenant and per token costs; shard by tenant to avoid hot partitions
+
+### Implementation guidance
+- Default budgets and refill rates per endpoint derived from p50 and p99 traffic envelopes
+- Retry after header with randomized backoff guidance to clients
+- Canary limits at 10 percent traffic with auto rollback on error budget burn

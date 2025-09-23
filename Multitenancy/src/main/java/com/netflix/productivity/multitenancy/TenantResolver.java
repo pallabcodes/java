@@ -3,6 +3,7 @@ package com.netflix.productivity.multitenancy;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import com.netflix.productivity.security.JwtTenantExtractor;
 import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
@@ -50,6 +51,12 @@ public class TenantResolver {
     
     private static final int MAX_TENANT_ID_LENGTH = 50;
     private static final String TENANT_ID_PATTERN = "^[a-zA-Z0-9][a-zA-Z0-9_-]*[a-zA-Z0-9]$";
+
+    private final JwtTenantExtractor jwtTenantExtractor;
+
+    public TenantResolver(JwtTenantExtractor jwtTenantExtractor) {
+        this.jwtTenantExtractor = jwtTenantExtractor;
+    }
 
     /**
      * Resolve tenant from HTTP request
@@ -180,22 +187,7 @@ public class TenantResolver {
      * @return Tenant identifier
      */
     private String resolveFromJwtToken(HttpServletRequest request) {
-        String authHeader = request.getHeader("Authorization");
-        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            try {
-                // TODO: Implement JWT token parsing to extract tenant
-                // This would typically involve:
-                // 1. Parse JWT token
-                // 2. Extract tenant claim
-                // 3. Validate token signature
-                // 4. Return tenant identifier
-                log.debug("JWT token found, tenant resolution not implemented yet");
-            } catch (Exception e) {
-                log.warn("Error parsing JWT token for tenant resolution", e);
-            }
-        }
-        return null;
+        return jwtTenantExtractor.extractTenant(request.getHeader("Authorization"));
     }
 
     /**

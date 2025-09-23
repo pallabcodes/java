@@ -307,6 +307,62 @@ public class NetflixDatabaseShardingStrategy {
 }
 ```
 
+#### Reference implementations and usage
+
+- Sharding core files:
+  - `sharding-shard-key-strategy.java`
+  - `sharding-consistent-hash-shard-router.java`
+  - `sharding-shard-manager.java`
+  - `sharding-read-write-router.java`
+  - `sharding-rebalancer.java`
+  - `sharding-flyway-migrator.java`
+
+Minimal setup example:
+
+```java
+ShardKeyStrategy keyStrategy = new ShardKeyStrategy.Default();
+ConsistentHashShardRouter router = new ConsistentHashShardRouter(keyStrategy, 128);
+router.configureShards(List.of("shard-a", "shard-b", "shard-c"));
+
+ShardManager shardManager = new ShardManager();
+shardManager.configure(List.of(
+    new ShardManager.ShardConfig(
+        "shard-a",
+        "jdbc:postgresql://db-a:5432/app", "app", "secret",
+        Map.of("maxPool", "30"),
+        List.of(new ShardManager.ReplicaConfig("a-r1", "jdbc:postgresql://db-a-r1:5432/app", "app", "secret", Map.of()))
+    ),
+    new ShardManager.ShardConfig(
+        "shard-b",
+        "jdbc:postgresql://db-b:5432/app", "app", "secret",
+        Map.of("maxPool", "30"),
+        List.of()
+    ),
+    new ShardManager.ShardConfig(
+        "shard-c",
+        "jdbc:postgresql://db-c:5432/app", "app", "secret",
+        Map.of("maxPool", "30"),
+        List.of()
+    )
+));
+
+ReadWriteRouter rw = new ReadWriteRouter(shardManager, router);
+
+// write
+DataSource writeDs = rw.dataSourceForWrite(userId);
+
+// read (prefer a specific replica if available)
+DataSource readDs = rw.dataSourceForRead(userId, List.of("a-r1"));
+```
+
+Rebalancing preview over sample keys:
+
+```java
+ShardingRebalancer rebalancer = new ShardingRebalancer(router);
+ShardingRebalancer.MovementPlan plan = rebalancer.planMovement(sampleKeys, List.of("shard-a","shard-b","shard-c","shard-d"));
+// plan.keysMoved and distributions help estimate movement cost before applying
+```
+
 ### **2. Database Replication Implementation**
 
 ```java
@@ -478,7 +534,7 @@ public class NetflixDatabaseReplicationStrategy {
         }
         
         return ReplicationStatistics.builder()
-                .totalReplicas(replicaDataSources.size() + 1)
+                .totalReplicas(slaveDataSources.size() + 1)
                 .healthyReplicas(replicaInfos.values().stream().mapToInt(r -> r.isHealthy() ? 1 : 0).sum())
                 .replicaInfos(replicaInfos)
                 .build();
@@ -922,3 +978,26 @@ public class DatabaseMetrics {
 **Version**: 1.0.0  
 **Maintainer**: Netflix SDE-2 Team  
 **Status**: ✅ Production Ready
+
+## Deep Dive Appendix
+
+### Adversarial scenarios
+- Cross shard transactional updates causing partial commits
+- Rebalancing and migrations under live traffic
+- Index bloat and plan regressions after data growth
+
+### Internal architecture notes
+- Shard router, manager, and rebalancer responsibilities
+- Read write routing and session tokens for consistency
+- Migration tooling with preview, plan, and apply phases
+
+### Validation and references
+- Shadow traffic during migrations; integrity checks and backfills
+- Load tests on rebalancer movement plans
+- Literature on sharding, partitioning, and schema evolution
+
+### Trade offs revisited
+- Normalization vs denormalization; operational complexity vs query power
+
+### Implementation guidance
+- Establish shard key ADRs early; automate migrations; track fragmentation and index health
