@@ -34,7 +34,12 @@ public class ProjectController {
 
     @GetMapping("/{key}")
     public ResponseEntity<ApiResponse<ProjectDto>> getByKey(@RequestHeader("X-Tenant-ID") String tenantId, @PathVariable String key) {
-        return responseMapper.ok(projectService.getByKey(tenantId, key));
+        final String normalizedKey = normalize(key);
+        return responseMapper.ok(projectService.getByKey(tenantId, normalizedKey));
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim();
     }
 }
 

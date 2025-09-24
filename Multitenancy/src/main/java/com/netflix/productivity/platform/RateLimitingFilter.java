@@ -1,5 +1,8 @@
 package com.netflix.productivity.platform;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.netflix.productivity.api.ApiResponse;
+import com.netflix.productivity.api.ErrorCodes;
 import com.netflix.productivity.multitenancy.TenantContext;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
@@ -10,9 +13,13 @@ import jakarta.servlet.http.HttpFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.netflix.productivity.config.DynamicConfigService;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,11 +29,19 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RateLimitingFilter extends HttpFilter {
 
     private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Autowired
+    private DynamicConfigService dynamicConfigService;
 
     private Bucket resolveBucket(String tenantId) {
-        return buckets.computeIfAbsent(tenantId == null ? "default" : tenantId, key -> {
-            // 200 req/min burst, refilled smoothly
-            Bandwidth limit = Bandwidth.classic(200, Refill.greedy(200, Duration.ofMinutes(1)));
+        String key = tenantId == null ? "default" : tenantId;
+        return buckets.compute(key, (k, existing) -> {
+            int perMinute = dynamicConfigService == null ? 200 : dynamicConfigService.getTenantRateLimitPerMinute(key);
+            Bandwidth limit = Bandwidth.classic(perMinute, Refill.greedy(perMinute, Duration.ofMinutes(1)));
+            if (existing == null) {
+                return Bucket.builder().addLimit(limit).build();
+            }
+            // Rebuild bucket if config changed
             return Bucket.builder().addLimit(limit).build();
         });
     }
@@ -39,9 +54,12 @@ public class RateLimitingFilter extends HttpFilter {
         if (bucket.tryConsume(1)) {
             chain.doFilter(request, response);
         } else {
-            response.setStatus(429);
+            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setHeader("Retry-After", "10");
-            response.getWriter().write("Rate limit exceeded");
+            response.setContentType("application/json");
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+            ApiResponse<Void> body = ApiResponse.error(HttpStatus.TOO_MANY_REQUESTS.value(), "Rate limit exceeded", null, ErrorCodes.RATE_LIMITED);
+            response.getWriter().write(objectMapper.writeValueAsString(body));
         }
     }
 }

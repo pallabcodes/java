@@ -5,73 +5,433 @@
   },
   "item": [
     {
-      "name": "List Projects",
-      "request": {
-        "method": "GET",
-        "header": [{ "key": "X-Tenant-ID", "value": "tenantA" }],
-        "url": {
-          "raw": "http://localhost:8080/api/projects",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8080",
-          "path": ["api", "projects"]
-        }
-      }
-    },
-    {
-      "name": "Create Project",
+      "name": "Auth Login",
       "request": {
         "method": "POST",
         "header": [
-          { "key": "X-Tenant-ID", "value": "tenantA" },
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {"raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"]},
+        "body": {"mode": "raw", "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Has correlation id header', function () { pm.expect(pm.response.headers.has('X-Correlation-Id')).to.be.true; });",
+              "pm.test('Has correlation id in body', function () { pm.expect(json.correlationId).to.exist; });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth Refresh",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {"raw": "{{baseUrl}}/api/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api","auth","refresh"]},
+        "body": {"mode": "raw", "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"refreshToken\": \"{{refreshToken}}\",\n  \"userAgent\": \"postman\",\n  \"ip\": \"127.0.0.1\"\n}"}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Has correlation id header', function () { pm.expect(pm.response.headers.has('X-Correlation-Id')).to.be.true; });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rate Limit Negative",
+      "request": {
+        "method": "GET",
+        "header": [
+          {"key": "X-Tenant-ID", "value": "{{tenantId}}"}
+        ],
+        "url": {"raw": "{{baseUrl}}/api/projects?pressure=true", "host": ["{{baseUrl}}"], "path": ["api","projects"], "query": [{"key":"pressure","value":"true"}]}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 429) {",
+              "  const json = pm.response.json();",
+              "  pm.test('Error code RATE_LIMITED', function () { pm.expect(json.errorCode).eql('RATE_LIMITED'); });",
+              "  pm.test('Retry-After present', function () { pm.expect(pm.response.headers.has('Retry-After')).to.be.true; });",
+              "} else { pm.test('Received 429 under pressure', function () { pm.expect(false, 'Not rate limited').to.be.true; }); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+    ,
+    {
+      "name": "Auth Change Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {"raw": "{{baseUrl}}/api/auth/change-password", "host": ["{{baseUrl}}"], "path": ["api","auth","change-password"]},
+        "body": {"mode": "raw", "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"usernameOrEmail\": \"{{username}}\",\n  \"oldPassword\": \"{{password}}\",\n  \"newPassword\": \"{{newPassword}}\"\n}"}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 204', function () { pm.response.to.have.status(204); });",
+              "pm.test('Has correlation id header', function () { pm.expect(pm.response.headers.has('X-Correlation-Id')).to.be.true; });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+    ,
+    {
+      "name": "Auth Sessions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {"raw": "{{baseUrl}}/api/auth/sessions?tenantId={{tenantId}}&userId={{userId}}", "host": ["{{baseUrl}}"], "path": ["api","auth","sessions"], "query": [{"key":"tenantId","value":"{{tenantId}}"},{"key":"userId","value":"{{userId}}"}]}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Has array data', function () { pm.expect(json.data).to.be.an('array'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+    ,
+    {
+      "name": "Auth Sessions Cross Negative",
+      "request": {
+        "method": "GET",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {"raw": "{{baseUrl}}/api/auth/sessions?tenantId={{tenantId}}&userId={{otherUserId}}", "host": ["{{baseUrl}}"], "path": ["api","auth","sessions"], "query": [{"key":"tenantId","value":"{{tenantId}}"},{"key":"userId","value":"{{otherUserId}}"}]}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 403 for cross-user sessions', function () { pm.response.to.have.status(403); });",
+              "const json = pm.response.json();",
+              "pm.test('Error code AUTH_403_000', function () { pm.expect(json.errorCode).eql('AUTH_403_000'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+    ,
+    {
+      "name": "Auth Revoke All",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {"raw": "{{baseUrl}}/api/auth/revoke-all?tenantId={{tenantId}}&userId={{userId}}", "host": ["{{baseUrl}}"], "path": ["api","auth","revoke-all"], "query": [{"key":"tenantId","value":"{{tenantId}}"},{"key":"userId","value":"{{userId}}"}]}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 204', function () { pm.response.to.have.status(204); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+    ,
+    {
+      "name": "Auth Revoke All Cross Negative",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {"raw": "{{baseUrl}}/api/auth/revoke-all?tenantId={{tenantId}}&userId={{otherUserId}}", "host": ["{{baseUrl}}"], "path": ["api","auth","revoke-all"], "query": [{"key":"tenantId","value":"{{tenantId}}"},{"key":"userId","value":"{{otherUserId}}"}]}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 403 for cross-user revoke', function () { pm.response.to.have.status(403); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+    ,
+    {
+      "name": "Auth Change Password Cross Negative",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {"raw": "{{baseUrl}}/api/auth/change-password", "host": ["{{baseUrl}}"], "path": ["api","auth","change-password"]},
+        "body": {"mode": "raw", "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"usernameOrEmail\": \"{{otherUsernameOrEmail}}\",\n  \"oldPassword\": \"irrelevant\",\n  \"newPassword\": \"irrelevant\"\n}"}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 403 for cross-user password change', function () { pm.response.to.have.status(403); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8080"},
+    {"key": "tenantId", "value": "acme"},
+    {"key": "username", "value": "admin"},
+    {"key": "password", "value": "password"},
+    {"key": "newPassword", "value": "password2"},
+    {"key": "userId", "value": "1"},
+    {"key": "otherUserId", "value": "2"},
+    {"key": "otherUsernameOrEmail", "value": "somebody@example.com"}
+  ]
+}
+
+{
+  "info": {
+    "name": "Netflix Productivity Platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Authenticated, tenant aware requests. Use collection variables: baseUrl, tenantId, email, password, jwt."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "tenantId", "value": "tenantA" },
+    { "key": "email", "value": "admin@tenantA.io" },
+    { "key": "password", "value": "password" },
+    { "key": "jwt", "value": "" },
+    { "key": "refreshToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth / Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const res = pm.response.json();",
+              "pm.collectionVariables.set('jwt', res.data && res.data.token ? res.data.token : res.token || '');",
+              "pm.test('JWT present', function () { pm.expect(pm.collectionVariables.get('jwt')).to.have.length.above(10); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth / Reset Request",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"email\": \"{{email}}\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/auth/reset-request", "host": ["{{baseUrl}}"], "path": ["api", "auth", "reset-request"] }
+      }
+    },
+    {
+      "name": "Auth / Reset Confirm",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"token\": \"REPLACE_WITH_TOKEN\",\n  \"newPassword\": \"NewP@ssword1\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/auth/reset-confirm", "host": ["{{baseUrl}}"], "path": ["api", "auth", "reset-confirm"] }
+      }
+    },
+    {
+      "name": "Auth / Refresh",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"refreshToken\": \"{{refreshToken}}\",\n  \"userAgent\": \"Postman\",\n  \"ip\": \"127.0.0.1\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "auth", "refresh"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "const res = pm.response.json();",
+          "if (res && res.data) {",
+          "  if (res.data.refreshToken) pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+          "  if (res.data.accessToken) pm.collectionVariables.set('jwt', res.data.accessToken);",
+          "}"] } }
+      ]
+    },
+    {
+      "name": "Auth / Revoke",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/auth/revoke", "host": ["{{baseUrl}}"], "path": ["api", "auth", "revoke"] }
+      }
+    },
+    {
+      "name": "Projects / List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/projects", "host": ["{{baseUrl}}"], "path": ["api", "projects"] }
+      }
+    },
+    {
+      "name": "Projects / Get By Key",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/projects/PROJ", "host": ["{{baseUrl}}"], "path": ["api", "projects", "PROJ"] }
+      }
+    },
+    {
+      "name": "Projects / Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" },
           { "key": "Content-Type", "value": "application/json" }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"tenantId\": \"tenantA\",\n  \"key\": \"PROJ\",\n  \"name\": \"Demo Project\",\n  \"status\": \"PLANNED\",\n  \"type\": \"SOFTWARE\",\n  \"ownerId\": \"user-1\"\n}"
+          "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"key\": \"PROJ\",\n  \"name\": \"Demo Project\",\n  \"status\": \"PLANNED\",\n  \"type\": \"SOFTWARE\",\n  \"ownerId\": \"user-1\"\n}"
         },
-        "url": {
-          "raw": "http://localhost:8080/api/projects",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8080",
-          "path": ["api", "projects"]
-        }
+        "url": { "raw": "{{baseUrl}}/api/projects", "host": ["{{baseUrl}}"], "path": ["api", "projects"] }
       }
     },
     {
-      "name": "Create Issue",
+      "name": "Issues / List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/issues", "host": ["{{baseUrl}}"], "path": ["api", "issues"] }
+      }
+    },
+    {
+      "name": "Issues / List By Project",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/issues/project/project-1", "host": ["{{baseUrl}}"], "path": ["api", "issues", "project", "project-1"] }
+      }
+    },
+    {
+      "name": "Issues / Get By Key",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/issues/PROJ-1", "host": ["{{baseUrl}}"], "path": ["api", "issues", "PROJ-1"] }
+      }
+    },
+    {
+      "name": "Issues / Create",
       "request": {
         "method": "POST",
         "header": [
-          { "key": "X-Tenant-ID", "value": "tenantA" },
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" },
           { "key": "Content-Type", "value": "application/json" }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"tenantId\": \"tenantA\",\n  \"key\": \"PROJ-1\",\n  \"title\": \"Login fails\",\n  \"status\": \"OPEN\",\n  \"priority\": \"HIGH\",\n  \"type\": \"BUG\",\n  \"projectId\": \"project-1\",\n  \"reporterId\": \"user-1\"\n}"
+          "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"key\": \"PROJ-1\",\n  \"title\": \"Login fails\",\n  \"status\": \"OPEN\",\n  \"priority\": \"HIGH\",\n  \"type\": \"BUG\",\n  \"projectId\": \"project-1\",\n  \"reporterId\": \"user-1\"\n}"
         },
-        "url": {
-          "raw": "http://localhost:8080/api/issues",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8080",
-          "path": ["api", "issues"]
-        }
+        "url": { "raw": "{{baseUrl}}/api/issues", "host": ["{{baseUrl}}"], "path": ["api", "issues"] }
       }
     },
     {
-      "name": "Search Issues",
+      "name": "Search / Issues",
       "request": {
         "method": "GET",
-        "header": [{ "key": "X-Tenant-ID", "value": "tenantA" }],
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
         "url": {
-          "raw": "http://localhost:8080/api/search/issues?q=login",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8080",
+          "raw": "{{baseUrl}}/api/search/issues?q=login",
+          "host": ["{{baseUrl}}"],
           "path": ["api", "search", "issues"],
-          "query": [{"key": "q", "value": "login"}]
+          "query": [{ "key": "q", "value": "login" }]
         }
       }
     }

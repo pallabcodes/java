@@ -26,7 +26,18 @@ public class SearchController {
     public ResponseEntity<ApiResponse<Object>> searchIssues(@RequestHeader("X-Tenant-ID") String tenantId,
                                                             @RequestParam("q") String query,
                                                             @RequestParam(value = "limit", defaultValue = "20") int limit) {
-        return responseMapper.ok(searchService.searchIssues(tenantId, query, Math.min(limit, 100)));
+        final String normalizedQuery = normalizeQuery(query);
+        final int effectiveLimit = normalizeLimit(limit);
+        return responseMapper.ok(searchService.searchIssues(tenantId, normalizedQuery, effectiveLimit));
+    }
+
+    private String normalizeQuery(String query) {
+        return query == null ? "" : query.trim();
+    }
+
+    private int normalizeLimit(int limit) {
+        if (limit < 1) return 1;
+        return Math.min(limit, 100);
     }
 }
 

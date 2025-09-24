@@ -46,6 +46,14 @@ public class ApiResponse<T> {
         return new ApiResponse<>(false, status, message, null, error, errorCode, null, null);
     }
 
+    public static <T> ApiResponse<T> successWith(int status, String message, T data, Map<String, Object> metadata, String correlationId) {
+        return new ApiResponse<>(true, status, message, data, null, null, correlationId, metadata);
+    }
+
+    public static <T> ApiResponse<T> errorWith(int status, String message, Object error, String errorCode, String correlationId) {
+        return new ApiResponse<>(false, status, message, null, error, errorCode, correlationId, null);
+    }
+
     public boolean isSuccess() { return success; }
     public int getStatus() { return status; }
     public String getMessage() { return message; }

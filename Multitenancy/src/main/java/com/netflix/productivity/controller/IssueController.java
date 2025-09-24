@@ -31,7 +31,8 @@ public class IssueController {
     public ResponseEntity<ApiResponse<Page<IssueDto>>> listByProject(@RequestHeader("X-Tenant-ID") String tenantId,
                                                                      @PathVariable String projectId,
                                                                      Pageable pageable) {
-        return responseMapper.ok(issueService.listByProject(tenantId, projectId, pageable));
+        final String normalizedProjectId = normalize(projectId);
+        return responseMapper.ok(issueService.listByProject(tenantId, normalizedProjectId, pageable));
     }
 
     @PostMapping
@@ -41,7 +42,12 @@ public class IssueController {
 
     @GetMapping("/{key}")
     public ResponseEntity<ApiResponse<IssueDto>> getByKey(@RequestHeader("X-Tenant-ID") String tenantId, @PathVariable String key) {
-        return responseMapper.ok(issueService.getByKey(tenantId, key));
+        final String normalizedKey = normalize(key);
+        return responseMapper.ok(issueService.getByKey(tenantId, normalizedKey));
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim();
     }
 }
 
