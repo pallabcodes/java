@@ -30,6 +30,152 @@
       ]
     },
     {
+      "name": "Attachments",
+      "item": [
+        {"name":"Attachments / List","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{jwt}}"},{"key":"X-Tenant-ID","value":"{{tenantId}}"}],"url":{"raw":"{{baseUrl}}/api/issues/{{issueKey}}/attachments","host":["{{baseUrl}}"],"path":["api","issues","{{issueKey}}","attachments"]}}},
+        {"name":"Attachments / Mint Upload","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{jwt}}"},{"key":"X-Tenant-ID","value":"{{tenantId}}"}],"url":{"raw":"{{baseUrl}}/api/attachments/upload/mint?issueId={{issueId}}&storageKey={{storageKey}}&sizeBytes=12","host":["{{baseUrl}}"],"path":["api","attachments","upload","mint"],"query":[{"key":"issueId","value":"{{issueId}}"},{"key":"storageKey","value":"{{storageKey}}"},{"key":"sizeBytes","value":"12"}]} }},
+        {"name":"Attachments / Signed Download","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{jwt}}"},{"key":"X-Tenant-ID","value":"{{tenantId}}"}],"url":{"raw":"{{baseUrl}}/api/issues/{{issueKey}}/attachments/{{attachmentId}}/signed-download","host":["{{baseUrl}}"],"path":["api","issues","{{issueKey}}","attachments","{{attachmentId}}","signed-download"]}}}
+      ]
+    },
+    {
+      "name": "Labels",
+      "item": [
+        {"name":"Labels / List","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{jwt}}"},{"key":"X-Tenant-ID","value":"{{tenantId}}"}],"url":{"raw":"{{baseUrl}}/api/labels","host":["{{baseUrl}}"],"path":["api","labels"]}}},
+        {"name":"Labels / Create","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{jwt}}"},{"key":"X-Tenant-ID","value":"{{tenantId}}"}],"url":{"raw":"{{baseUrl}}/api/labels?name=bug&color=%23ff0000","host":["{{baseUrl}}"],"path":["api","labels"],"query":[{"key":"name","value":"bug"},{"key":"color","value":"%23ff0000"}]} }},
+        {"name":"Issue Labels / Assign","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{jwt}}"},{"key":"X-Tenant-ID","value":"{{tenantId}}"}],"url":{"raw":"{{baseUrl}}/api/issues/{{issueId}}/labels/{{labelId}}","host":["{{baseUrl}}"],"path":["api","issues","{{issueId}}","labels","{{labelId}}"]}}}
+      ]
+    },
+    {
+      "name": "Watchers",
+      "item": [
+        {"name":"Watchers / List","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{jwt}}"},{"key":"X-Tenant-ID","value":"{{tenantId}}"}],"url":{"raw":"{{baseUrl}}/api/issues/{{issueId}}/watchers","host":["{{baseUrl}}"],"path":["api","issues","{{issueId}}","watchers"]}}},
+        {"name":"Watchers / Add","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{jwt}}"},{"key":"X-Tenant-ID","value":"{{tenantId}}"}],"url":{"raw":"{{baseUrl}}/api/issues/{{issueId}}/watchers?userId={{userId}}","host":["{{baseUrl}}"],"path":["api","issues","{{issueId}}","watchers"],"query":[{"key":"userId","value":"{{userId}}"}]}}}
+      ]
+    },
+    {
+      "name": "SLA",
+      "item": [
+        {"name":"SLA / Set Due","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{jwt}}"},{"key":"X-Tenant-ID","value":"{{tenantId}}"}],"url":{"raw":"{{baseUrl}}/api/issues/{{issueKey}}/sla/due?due=2025-01-01T00:00:00","host":["{{baseUrl}}"],"path":["api","issues","{{issueKey}}","sla","due"],"query":[{"key":"due","value":"2025-01-01T00:00:00"}]}}}
+      ]
+    },
+    {
+      "name": "Storage / Health",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/storage/health", "host": ["{{baseUrl}}"], "path": ["api","storage","health"] }
+      }
+    },
+    {
+      "name": "Workflow UX / Transitions",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/workflow/ux/issues/{{issueKey}}/transitions?projectId={{projectId}}&workflowId={{workflowId}}", "host": ["{{baseUrl}}"], "path": ["api","workflow","ux","issues","{{issueKey}}","transitions"], "query": [{"key":"projectId","value":"{{projectId}}"},{"key":"workflowId","value":"{{workflowId}}"}] }
+      }
+    },
+    {
+      "name": "Workflow UX / Bulk Transition",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/workflow/ux/issues/bulk-transition", "host": ["{{baseUrl}}"], "path": ["api","workflow","ux","issues","bulk-transition"] },
+        "body": { "mode": "raw", "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"projectId\": \"{{projectId}}\",\n  \"workflowId\": \"{{workflowId}}\",\n  \"keys\": [\"{{issueKey}}\"],\n  \"toStateId\": \"{{toStateId}}\"\n}" }
+      }
+    },
+    {
+      "name": "Runtime / RateLimit Get",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/runtime/ratelimit", "host": ["{{baseUrl}}"], "path": ["api","runtime","ratelimit"] }
+      }
+    },
+    {
+      "name": "Runtime / RateLimit Set",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/runtime/ratelimit?perMinute=300&ttl=PT1H", "host": ["{{baseUrl}}"], "path": ["api","runtime","ratelimit"], "query": [{"key":"perMinute","value":"300"},{"key":"ttl","value":"PT1H"}] }
+      }
+    },
+    {
+      "name": "Webhooks / Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/webhooks?name=demo&url=https://webhook.site/your-id&secret=dev&eventFilter=ISSUE_", "host": ["{{baseUrl}}"], "path": ["api","webhooks"], "query": [
+          {"key":"name","value":"demo"},
+          {"key":"url","value":"https://webhook.site/your-id"},
+          {"key":"secret","value":"dev"},
+          {"key":"eventFilter","value":"ISSUE_"}
+        ] }
+      }
+    },
+    {
+      "name": "Webhooks / List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/webhooks", "host": ["{{baseUrl}}"], "path": ["api","webhooks"] }
+      }
+    },
+    {
+      "name": "Comments / List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/issues/{{issueKey}}/comments", "host": ["{{baseUrl}}"], "path": ["api","issues","{{issueKey}}","comments"] }
+      }
+    },
+    {
+      "name": "Comments / Add",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"authorUserId\": \"{{userId}}\",\n  \"body\": \"Looks good\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/issues/{{issueKey}}/comments", "host": ["{{baseUrl}}"], "path": ["api","issues","{{issueKey}}","comments"] }
+      }
+    },
+    {
+      "name": "Audit / List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/issues/{{issueKey}}/audit", "host": ["{{baseUrl}}"], "path": ["api","issues","{{issueKey}}","audit"] }
+      }
+    },
+    {
       "name": "Auth Refresh",
       "request": {
         "method": "POST",
@@ -78,6 +224,55 @@
       ]
     }
     ,
+    {
+      "name": "Workflows",
+      "item": [
+        {
+          "name": "Workflows / List",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{jwt}}"},
+              {"key": "X-Tenant-ID", "value": "{{tenantId}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/workflows?tenantId={{tenantId}}&projectId={{projectId}}", "host": ["{{baseUrl}}"], "path": ["api","workflows"], "query": [{"key":"tenantId","value":"{{tenantId}}"},{"key":"projectId","value":"{{projectId}}"}]}
+          }
+        },
+        {
+          "name": "Workflows / Get",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{jwt}}"},
+              {"key": "X-Tenant-ID", "value": "{{tenantId}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/workflows/{{workflowKey}}?tenantId={{tenantId}}&projectId={{projectId}}", "host": ["{{baseUrl}}"], "path": ["api","workflows","{{workflowKey}}"], "query": [{"key":"tenantId","value":"{{tenantId}}"},{"key":"projectId","value":"{{projectId}}"}]}
+          }
+        },
+        {
+          "name": "Workflows / Transitions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{jwt}}"},
+              {"key": "X-Tenant-ID", "value": "{{tenantId}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/workflows/{{workflowId}}/transitions?tenantId={{tenantId}}&projectId={{projectId}}", "host": ["{{baseUrl}}"], "path": ["api","workflows","{{workflowId}}","transitions"], "query": [{"key":"tenantId","value":"{{tenantId}}"},{"key":"projectId","value":"{{projectId}}"}]}
+          }
+        },
+        {
+          "name": "Workflows / Transitions From State",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{jwt}}"},
+              {"key": "X-Tenant-ID", "value": "{{tenantId}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/workflows/{{workflowId}}/transitions/from/{{fromStateId}}?tenantId={{tenantId}}&projectId={{projectId}}", "host": ["{{baseUrl}}"], "path": ["api","workflows","{{workflowId}}","transitions","from","{{fromStateId}}"], "query": [{"key":"tenantId","value":"{{tenantId}}"},{"key":"projectId","value":"{{projectId}}"}]}
+          }
+        }
+      ]
+    },
     {
       "name": "Auth Change Password",
       "request": {
@@ -220,6 +415,12 @@
   "variable": [
     {"key": "baseUrl", "value": "http://localhost:8080"},
     {"key": "tenantId", "value": "acme"},
+    {"key": "projectId", "value": "project-1"},
+    {"key": "workflowKey", "value": "default"},
+    {"key": "workflowId", "value": ""},
+    {"key": "fromStateId", "value": ""},
+    {"key": "toStateId", "value": ""},
+    {"key": "issueKey", "value": "PROJ-1"},
     {"key": "username", "value": "admin"},
     {"key": "password", "value": "password"},
     {"key": "newPassword", "value": "password2"},
@@ -417,6 +618,19 @@
           "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"key\": \"PROJ-1\",\n  \"title\": \"Login fails\",\n  \"status\": \"OPEN\",\n  \"priority\": \"HIGH\",\n  \"type\": \"BUG\",\n  \"projectId\": \"project-1\",\n  \"reporterId\": \"user-1\"\n}"
         },
         "url": { "raw": "{{baseUrl}}/api/issues", "host": ["{{baseUrl}}"], "path": ["api", "issues"] }
+      }
+    },
+    {
+      "name": "Issues / Transition",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "X-Tenant-ID", "value": "{{tenantId}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"projectId\": \"{{projectId}}\",\n  \"workflowId\": \"{{workflowId}}\",\n  \"fromStateId\": \"{{fromStateId}}\",\n  \"toStateId\": \"{{toStateId}}\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/issues/{{issueKey}}/transition", "host": ["{{baseUrl}}"], "path": ["api", "issues", "{{issueKey}}", "transition"] }
       }
     },
     {

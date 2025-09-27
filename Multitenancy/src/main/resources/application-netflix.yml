@@ -1,0 +1,184 @@
+# Netflix-scale configuration
+spring:
+  application:
+    name: productivity-platform
+  
+  # Eureka Service Discovery
+  cloud:
+    discovery:
+      enabled: true
+    loadbalancer:
+      ribbon:
+        enabled: true
+  
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/productivity
+    username: productivity_user
+    password: ${DB_PASSWORD:secure_password}
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+  
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+  
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 25
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+        generate_statistics: false
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+
+# Netflix OSS Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+# Archaius Dynamic Configuration
+archaius:
+  config-source:
+    default:
+      polling-interval-ms: 30000
+  property:
+    sources:
+      - type: system
+      - type: environment
+      - type: classpath
+        resource: application.properties
+
+# Hystrix Circuit Breaker Configuration
+hystrix:
+  command:
+    default:
+      execution:
+        timeout:
+          enabled: true
+        isolation:
+          thread:
+            timeout-in-milliseconds: 30000
+      circuit-breaker:
+        request-volume-threshold: 20
+        error-threshold-percentage: 50
+        sleep-window-in-milliseconds: 5000
+      metrics:
+        rolling-stats:
+          time-in-milliseconds: 10000
+  threadpool:
+    default:
+      core-size: 10
+      maximum-size: 50
+      max-queue-size: 100
+
+# Ribbon Load Balancer Configuration
+ribbon:
+  ConnectTimeout: 3000
+  ReadTimeout: 10000
+  MaxAutoRetries: 1
+  MaxAutoRetriesNextServer: 2
+  OkToRetryOnAllOperations: false
+
+# Sleuth Distributed Tracing
+spring:
+  sleuth:
+    zipkin:
+      base-url: ${ZIPKIN_URL:http://localhost:9411}
+    sampler:
+      probability: 1.0
+
+# Management and Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
+
+# Application Configuration
+app:
+  jwt:
+    secret: ${JWT_SECRET:your-secret-key-change-in-production}
+    expiration: 86400000
+  multitenancy:
+    enabled: true
+  rate-limiting:
+    enabled: true
+    default-limit: 1000
+    burst-capacity: 2000
+  attachments:
+    storage:
+      type: minio
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${MINIO_SECRET_KEY:minioadmin}
+      bucket-name: productivity-attachments
+  webhooks:
+    retry:
+      max-attempts: 3
+      backoff-delay: 1000
+      max-delay: 10000
+    timeout: 30000
+  reporting:
+    cache:
+      ttl: 300
+      max-size: 1000
+
+# Logging Configuration
+logging:
+  level:
+    com.netflix.productivity: INFO
+    org.springframework.cloud: DEBUG
+    com.netflix.hystrix: DEBUG
+    com.netflix.eureka: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+  file:
+    name: logs/productivity-platform.log
+    max-size: 100MB
+    max-history: 30

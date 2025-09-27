@@ -154,6 +154,9 @@ public class Issue {
     @Column(name = "due_date")
     private LocalDateTime dueDate;
 
+    @Column(name = "sla_breached_at")
+    private LocalDateTime slaBreachedAt;
+
     @Column(name = "resolution")
     @Enumerated(EnumType.STRING)
     private IssueResolution resolution;
@@ -230,6 +233,12 @@ public class Issue {
 
     @Column(name = "is_new_feature")
     private Boolean isNewFeature;
+
+    @Column(name = "workflow_id", length = 36)
+    private String workflowId;
+
+    @Column(name = "workflow_state_id", length = 36)
+    private String workflowStateId;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

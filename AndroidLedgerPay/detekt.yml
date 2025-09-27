@@ -1,0 +1,18 @@
+processors:
+  active: true
+config:
+  validation: true
+reports:
+  txt:
+    enabled: true
+  html:
+    enabled: true
+  xml:
+    enabled: true
+build:
+  maxIssues: 0
+style:
+  MagicNumber:
+    active: false
+  WildcardImport:
+    active: false

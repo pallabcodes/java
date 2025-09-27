@@ -1,12 +1,13 @@
 package com.netflix.springai.web;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.embedding.EmbeddingClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+
+import com.netflix.springai.service.SpringAiService;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -15,14 +16,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = EmbeddingController.class)
 class EmbeddingControllerTest {
-	@Autowired MockMvc mvc;
-	@MockBean EmbeddingClient embeddingClient;
+    @Autowired MockMvc mvc;
+    @MockBean SpringAiService springAiService;
 
-	@Test
-	void embeddingsEndpointWorks() throws Exception {
-		when(embeddingClient.embed("hello")).thenReturn(java.util.List.of(0.1, 0.2));
-		mvc.perform(post("/api/embeddings").contentType(MediaType.APPLICATION_JSON).content("{\"text\":\"hello\"}"))
-			.andExpect(status().isOk())
-			.andExpect(content().json("[0.1,0.2]"));
-	}
+    @Test
+    void embeddingsEndpointWorks() throws Exception {
+        when(springAiService.embed("hello")).thenReturn(java.util.List.of(0.1, 0.2));
+        mvc.perform(post("/api/embeddings").contentType(MediaType.APPLICATION_JSON).content("{\"text\":\"hello\"}"))
+            .andExpect(status().isOk())
+            .andExpect(content().json("[0.1,0.2]"));
+    }
 }

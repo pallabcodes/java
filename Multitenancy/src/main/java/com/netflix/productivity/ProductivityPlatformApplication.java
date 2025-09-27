@@ -9,9 +9,12 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 /**
  * Netflix Production-Grade Productivity Platform Application
@@ -39,9 +42,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @since 2024
  */
 @SpringBootApplication
+@EnableDiscoveryClient
+@EnableFeignClients
 @EnableCaching
 @EnableAsync
 @EnableScheduling
+@EnableTransactionManagement
 @EnableConfigurationProperties
 @Import({
     MultiTenancyConfig.class,

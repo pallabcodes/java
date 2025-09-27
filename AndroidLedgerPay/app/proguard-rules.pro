@@ -1,0 +1,5 @@
+-keep class dagger.hilt.** { *; }
+-keep class * extends dagger.hilt.EntryPoint
+-keep class javax.inject.** { *; }
+-keepattributes *Annotation*
+-dontwarn javax.inject.**
