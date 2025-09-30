@@ -67,7 +67,13 @@ public class AuthenticationController {
         final Map<String, Object> claims = new HashMap<>();
         claims.put("roles", roleNames);
         final String token = jwtTokenService.issue(user.getId(), tenant, user.getTokenVersion(), claims);
-        return responseMapper.ok(new LoginResponse(token, "Bearer", ACCESS_TOKEN_TTL_MS));
+        // also issue refresh token and return as HttpOnly cookie and in body for non-browser clients
+        String refresh = refreshTokenService.issue(tenant, String.valueOf(user.getId()), java.time.Duration.ofDays(30), req.getUserAgent(), req.getIp());
+        var resp = responseMapper.ok(new LoginResponse(token, "Bearer", ACCESS_TOKEN_TTL_MS));
+        var headers = new org.springframework.http.HttpHeaders();
+        headers.add(org.springframework.http.HttpHeaders.SET_COOKIE,
+                java.net.HttpCookie.parse("refreshToken=" + refresh + "; HttpOnly; Secure; Path=/; SameSite=Strict").get(0).toString());
+        return new org.springframework.http.ResponseEntity<>(resp.getBody(), headers, resp.getStatusCode());
     }
 
     @PostMapping("/reset-request")

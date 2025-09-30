@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: productivity-gateway
+  cloud:
+    gateway:
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          "[/**]":
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            exposedHeaders:
+              - X-Correlation-Id
+            allowCredentials: false
+      default-filters:
+        - AddRequestHeader=X-Request-Start, t=%START_TIME%
+        - RemoveRequestHeader=Cookie
+      routes:
+        - id: api
+          uri: http://localhost:8080
+          predicates:
+            - Path=/api/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - AddResponseHeader=X-Frame-Options, DENY
+            - AddResponseHeader=X-Content-Type-Options, nosniff
+            - AddResponseHeader=Referrer-Policy, no-referrer
+            - AddResponseHeader=Cache-Control, no-store
+            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin RETAIN_UNIQUE
+            - name: RequestRateLimiter
+              args:
+                key-resolver: '#{tenantKeyResolver}'
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+server:
+  port: 8081
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,loggers,threaddump,heapdump
+  endpoint:
+    health:
+      show-details: when_authorized
+

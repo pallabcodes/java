@@ -2,6 +2,14 @@
 spring:
   application:
     name: productivity-platform
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:https://idp.example.com/tenant}
+          jwk-set-uri: ${OIDC_JWKS_URI:https://idp.example.com/tenant/.well-known/jwks.json}
+          audiences: ${OIDC_AUDIENCES:productivity-api}
+          principal-claim: ${OIDC_PRINCIPAL_CLAIM:sub}
   
   # Eureka Service Discovery
   cloud:
@@ -56,6 +64,18 @@ spring:
           use_query_cache: true
           region:
             factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+
+# mTLS placeholders (use when terminating TLS in app, else terminate at mesh/edge)
+server:
+  ssl:
+    enabled: ${SERVER_SSL_ENABLED:false}
+    key-store: ${SERVER_SSL_KEYSTORE:classpath:tls/server-keystore.p12}
+    key-store-password: ${SERVER_SSL_KEYSTORE_PASSWORD:changeit}
+    key-store-type: ${SERVER_SSL_KEYSTORE_TYPE:PKCS12}
+    trust-store: ${SERVER_SSL_TRUSTSTORE:classpath:tls/server-truststore.p12}
+    trust-store-password: ${SERVER_SSL_TRUSTSTORE_PASSWORD:changeit}
+    trust-store-type: ${SERVER_SSL_TRUSTSTORE_TYPE:PKCS12}
+    client-auth: ${SERVER_SSL_CLIENT_AUTH:need}
 
 # Netflix OSS Configuration
 eureka:
@@ -139,6 +159,22 @@ management:
       percentiles:
         http.server.requests: 0.5,0.95,0.99
 
+# Vault integration placeholders
+spring:
+  cloud:
+    vault:
+      enabled: ${VAULT_ENABLED:false}
+      host: ${VAULT_HOST:localhost}
+      port: ${VAULT_PORT:8200}
+      scheme: ${VAULT_SCHEME:http}
+      uri: ${VAULT_URI:http://localhost:8200}
+      token: ${VAULT_TOKEN:}
+      kv:
+        enabled: true
+        backend: ${VAULT_KV_BACKEND:secret}
+        application-name: ${spring.application.name}
+      authentication: ${VAULT_AUTH_METHOD:token}
+      fail-fast: false
 # Application Configuration
 app:
   jwt:
@@ -167,6 +203,41 @@ app:
     cache:
       ttl: 300
       max-size: 1000
+  logout:
+    backchannel:
+      enabled: ${BACKCHANNEL_LOGOUT_ENABLED:false}
+      redis-channel: ${BACKCHANNEL_LOGOUT_CHANNEL:auth:logout}
+  opa:
+    enabled: ${OPA_ENABLED:false}
+    base-url: ${OPA_BASE_URL:http://localhost:8181}
+    policy-path: ${OPA_POLICY_PATH:/v1/data/productivity/allow}
+  permission-cache:
+    enabled: ${PERMISSION_CACHE_ENABLED:true}
+    ttl-seconds: ${PERMISSION_CACHE_TTL:300}
+  login:
+    throttling:
+      enabled: ${LOGIN_THROTTLING_ENABLED:true}
+      max-attempts: ${LOGIN_MAX_ATTEMPTS:5}
+      window-seconds: ${LOGIN_WINDOW_SECONDS:300}
+      block-seconds: ${LOGIN_BLOCK_SECONDS:900}
+  refresh-tokens:
+    device-binding-enabled: ${REFRESH_DEVICE_BINDING_ENABLED:true}
+    reuse-detection-enabled: ${REFRESH_REUSE_DETECTION_ENABLED:true}
+    fingerprint-headers: ${REFRESH_FINGERPRINT_HEADERS:X-Device-Id,X-Client-Version}
+  mesh:
+    policy:
+      retries: ${MESH_RETRIES:2}
+      timeout-ms: ${MESH_TIMEOUT_MS:5000}
+      circuit-breaker-threshold: ${MESH_CB_THRESHOLD:20}
+  logging:
+    shipper:
+      enabled: ${LOG_SHIPPER_ENABLED:false}
+      endpoint: ${LOG_SHIPPER_ENDPOINT:http://loki.example.com}
+      api-key: ${LOG_SHIPPER_API_KEY:}
+  spiffe:
+    enabled: ${SPIFFE_ENABLED:false}
+    trust-domain: ${SPIFFE_TRUST_DOMAIN:example.org}
+    workload-selector: ${SPIFFE_SELECTOR:k8s:ns/default}
 
 # Logging Configuration
 logging:
@@ -182,3 +253,29 @@ logging:
     name: logs/productivity-platform.log
     max-size: 100MB
     max-history: 30
+
+# Kafka configuration
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      acks: all
+      enable-idempotence: true
+      retries: 5
+      properties:
+        delivery.timeout.ms: 120000
+        linger.ms: 10
+        request.timeout.ms: 30000
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    properties:
+      max.in.flight.requests.per.connection: 1
+      allow.auto.create.topics: true
+
+app:
+  kafka:
+    outbox:
+      topic-audit: ${OUTBOX_TOPIC_AUDIT:productivity.audit}
+      topic-webhook: ${OUTBOX_TOPIC_WEBHOOK:productivity.webhook}
+      batch-size: ${OUTBOX_BATCH_SIZE:200}
+      dispatch-interval-ms: ${OUTBOX_DISPATCH_INTERVAL_MS:2000}

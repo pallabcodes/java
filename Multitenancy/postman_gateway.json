@@ -1,0 +1,81 @@
+{
+  "info": {
+    "name": "Productivity Gateway",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "List issues via gateway",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "X-Tenant-ID", "value": "acme" }
+        ],
+        "url": {
+          "raw": "http://localhost:8081/api/issues",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "issues"]
+        }
+      }
+    },
+    {
+      "name": "Gateway health",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8081/actuator/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["actuator", "health"]
+        }
+      }
+    },
+    {
+      "name": "Gateway metrics scrape",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8081/actuator/prometheus",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["actuator", "prometheus"]
+        }
+      }
+    },
+    {
+      "name": "Rate limit exercise",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.variables.set('ts', Date.now())"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "X-Tenant-ID", "value": "acme" }
+        ],
+        "url": {
+          "raw": "http://localhost:8081/api/issues?ts={{ts}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "issues"],
+          "query": [
+            { "key": "ts", "value": "{{ts}}" }
+          ]
+        }
+      }
+    }
+  ]
+}
+

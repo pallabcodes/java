@@ -24,6 +24,10 @@ This document outlines the security measures, policies, and procedures for the N
 - **Audit Logging**: Comprehensive security event logging
 
 ## Security Controls
+### Resilience
+- Prefer Resilience4j for circuit breakers, retries, time limiters, and bulkheads
+- Hystrix is archived; keep historical notes but migrate new work to Resilience4j
+
 
 ### Input Validation
 - **SQL Injection Prevention**: Parameterized queries and JPA

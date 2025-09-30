@@ -6,6 +6,7 @@ import com.netflix.productivity.webhook.entity.WebhookDelivery;
 import com.netflix.productivity.webhook.repository.WebhookDeliveryRepository;
 import com.netflix.productivity.webhook.repository.WebhookRepository;
 import lombok.RequiredArgsConstructor;
+import com.netflix.productivity.outbox.service.OutboxService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -28,6 +29,7 @@ import java.util.UUID;
 public class WebhookService {
     private final WebhookRepository webhooks;
     private final WebhookDeliveryRepository deliveries;
+    private final OutboxService outbox;
 
     public void enqueueDeliveries(AuditEvent event) {
         List<Webhook> targets = webhooks.findByTenantIdAndEnabledTrue(event.getTenantId());
@@ -44,6 +46,17 @@ public class WebhookService {
                     .attempt(0)
                     .nextAttemptAt(OffsetDateTime.now())
                     .build());
+
+            // Also enqueue to Kafka outbox for external webhook worker
+            outbox.enqueueWebhook(event.getTenantId(), "WEBHOOK", String.valueOf(wh.getId()), "AUDIT_EVENT",
+                    Map.of(
+                            "eventId", event.getId(),
+                            "webhookId", wh.getId(),
+                            "url", wh.getUrl(),
+                            "secret", wh.getSecret() == null ? "" : wh.getSecret(),
+                            "createdAt", OffsetDateTime.now().toString()
+                    )
+            );
         }
     }
 

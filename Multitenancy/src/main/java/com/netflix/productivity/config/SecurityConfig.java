@@ -1,7 +1,6 @@
 package com.netflix.productivity.config;
 
 import com.netflix.productivity.security.JwtAuthenticationFilter;
-import com.netflix.productivity.api.ResponseMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -11,8 +10,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandlerImpl;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -34,6 +35,9 @@ public class SecurityConfig {
                 .accessDeniedHandler(new AccessDeniedHandlerImpl())
             )
             .httpBasic(Customizer.withDefaults())
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(Customizer.withDefaults())
+            )
             .addFilterBefore(new JwtAuthenticationFilter("netflix-productivity-jwt-secret-key"), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

@@ -1,0 +1,44 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: productivity-gateway
+  namespace: productivity
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*"
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: productivity-api
+  namespace: productivity
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - productivity-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /api/
+      route:
+        - destination:
+            host: productivity-api.productivity.svc.cluster.local
+            subset: v1
+            port:
+              number: 8080
+          weight: 90
+        - destination:
+            host: productivity-api.productivity.svc.cluster.local
+            subset: v2
+            port:
+              number: 8080
+          weight: 10
+

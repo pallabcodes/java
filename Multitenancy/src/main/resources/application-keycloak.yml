@@ -1,0 +1,41 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/productivity
+          jwk-set-uri: http://localhost:8080/realms/productivity/protocol/openid-connect/certs
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: productivity-outbox
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+# Keycloak OIDC configuration
+keycloak:
+  realm: productivity
+  auth-server-url: http://localhost:8080
+  resource: productivity-api
+  credentials:
+    secret: your-client-secret
+
+# JWT configuration
+jwt:
+  secret: your-jwt-secret-key-here-make-it-long-and-secure
+  expiration: 86400000
+
+# Multi-tenancy
+multitenancy:
+  enabled: true
+  default-tenant: acme
+
+# Logging
+logging:
+  level:
+    com.netflix.productivity: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG

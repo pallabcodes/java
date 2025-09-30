@@ -107,45 +107,37 @@ Multitenancy/
 ### **Prerequisites**
 - Java 17+
 - Maven 3.9+
-- PostgreSQL 15+
-- Docker (optional)
+- Docker & Docker Compose
 
-### **Local Development**
+### **One-Command Setup (Recommended)**
 
-1. **Clone and Setup**
 ```bash
+# Clone and start all services
 git clone <repository-url>
 cd Multitenancy
+
+# Start all dependencies
+docker compose -f docker-compose.yml up -d
+docker compose -f docker-compose.kafka.yml up -d
+docker compose -f docker-compose.keycloak.yml up -d
+
+# Run application with Keycloak (default dev)
+SPRING_PROFILES_ACTIVE=keycloak ./mvnw spring-boot:run
 ```
 
-2. **Database Setup**
-```bash
-# Create database
-createdb productivity_platform
-
-# Run migrations
-mvn flyway:migrate
-```
-
-3. **Run Application**
-```bash
-mvn spring-boot:run
-```
-
-4. **Access Application**
+### **Access Points**
 - **API**: http://localhost:8080/api
-- **Health**: http://localhost:8080/api/actuator/health
-- **Metrics**: http://localhost:8080/api/actuator/prometheus
+- **Gateway**: http://localhost:8081/api (with rate limiting)
+- **Keycloak**: http://localhost:8080 (admin/admin)
+- **Health**: http://localhost:8080/actuator/health
+- **Metrics**: http://localhost:8080/actuator/prometheus
 
-### **Docker Development**
+### **CI/CD Setup**
 
-```bash
-# Build and run with Docker Compose
-docker-compose up -d
-
-# Access application
-curl http://localhost:8080/api/actuator/health
-```
+Required GitHub repository secrets:
+- `DOCKER_USERNAME`: Docker Hub username
+- `DOCKER_PASSWORD`: Docker Hub password
+- `TRIVY_TOKEN`: Trivy vulnerability scanner token (optional)
 
 ## 🔧 **CONFIGURATION**
 

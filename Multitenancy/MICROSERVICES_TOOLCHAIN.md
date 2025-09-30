@@ -84,37 +84,38 @@
 13. Workflow engine, comments, labels, watchers, SLA scheduler
 14. Dockerfile, docker compose, MinIO compose
 15. Runbook, security, performance docs
+16. Spring Cloud Gateway profile with security headers and correlation id
+17. Kafka transactional outbox dispatch for audit and webhook events
 
 **Partially implemented**
 
 1. Redis used for config overrides not EVCache style multi region cache
 2. Distributed tracing wired to Zipkin, Atlas not used
 3. Reporting implemented but no external OLAP or Presto
-4. Eventing is internal Spring events, no Kafka
+4. Kafka outbox present; broader domain event bus and CDC pending
+5. OIDC with Keycloak for dev; production IdP integration pending
+6. Resilience4j replacing Hystrix; advanced patterns pending
 
 **Not yet implemented**
 
-1. API gateway at edge Zuul or Spring Cloud Gateway with global auth, rate limit, header policies
-2. Service mesh Envoy or Istio, mTLS, traffic shaping, canary and fault injection
-3. CI CD with Spinnaker pipelines, deployment strategies red black or canary
-4. Chaos engineering Chaos Monkey or FIT integration
-5. Secrets management Vault, envelope encryption and dynamic DB creds
-6. OAuth2 or OIDC provider integration Okta or Keycloak, token introspection for services
-7. EVCache for low latency multi region caching
-8. Kafka based event bus, outbox pattern, CDC with Debezium
-9. gRPC for internal service to service calls with protobuf
-10. Centralized logging stack ELK or Loki and log shipping
-11. Consumer driven contracts Pact and contract verification in CI
-12. Conductor for long running workflows or Temporal based orchestration
-13. Feature flag service LaunchDarkly or Unleash and gradual rollout
-14. Multi region active active patterns, region failover runbooks and data replication
-15. Atlas metrics backend and Netflix style dimensional dashboards
-16. Data search stack Elasticsearch and Kibana for issues search and analytics
-17. Policy layer OPA for fine grained authorization decisions
-18. Secrets rotation and KMS integration
-19. Canary analysis Kayenta or equivalent automated canary judge
-20. Kubernetes or Titus production manifests, autoscaling, PodDisruptionBudgets, HPA and VPA
-21. Cost and quota guardrails service level budgets and alerts
+1. Service mesh advanced traffic shaping and canary with subsets
+2. CI CD with Spinnaker pipelines, deployment strategies red black or canary
+3. Chaos engineering Chaos Monkey or FIT integration
+4. Secrets management Vault, envelope encryption and dynamic DB creds
+5. EVCache for low latency multi region caching
+6. gRPC for internal service to service calls with protobuf
+7. Centralized logging stack ELK or Loki and log shipping
+8. Consumer driven contracts Pact and contract verification in CI
+9. Conductor for long running workflows or Temporal based orchestration
+10. Feature flag service LaunchDarkly or Unleash and gradual rollout
+11. Multi region active active patterns, region failover runbooks and data replication
+12. Atlas metrics backend and Netflix style dimensional dashboards
+13. Data search stack Elasticsearch and Kibana for issues search and analytics
+14. Policy layer OPA for fine grained authorization decisions
+15. Secrets rotation and KMS integration
+16. Canary analysis Kayenta or equivalent automated canary judge
+17. Kubernetes or Titus production manifests, autoscaling, PodDisruptionBudgets, HPA and VPA
+18. Cost and quota guardrails service level budgets and alerts
 
 This file captures the reference toolchain and current adoption state without implementation steps.
 
