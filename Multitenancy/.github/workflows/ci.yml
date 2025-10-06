@@ -119,7 +119,6 @@ jobs:
 
   pact:
     runs-on: ubuntu-latest
-    if: ${{ hashFiles('pacts/*.json') != '' }}
     needs: test
     steps:
       - uses: actions/checkout@v4
@@ -128,8 +127,38 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-      - name: Run provider Pact verification if pacts present
+      - name: Run provider Pact verification
         run: ./mvnw -Dtest=com.netflix.productivity.pact.ProviderPactTest test
+
+      - name: Publish Pacts to Broker
+        run: ./scripts/pact_publish.sh
+
+  opa:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OPA
+        run: |
+          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
+          chmod +x opa
+      - name: Run OPA tests
+        run: |
+          ./opa test policies/opa -v
+
+  contracts:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Set compatibility and register schemas
+        run: |
+          ./scripts/schema_registry_set_compat.sh audit.events.v1 BACKWARD
+          ./scripts/schema_registry_set_compat.sh webhook.events.v1 BACKWARD
+          ./scripts/schema_registry_register.sh audit.events.v1 src/main/avro/audit_event.avsc
+          ./scripts/schema_registry_register.sh webhook.events.v1 src/main/avro/webhook_event.avsc
 
   security:
     runs-on: ubuntu-latest
@@ -160,7 +189,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    needs: [test, smoke, security]
+    needs: [test, smoke, security, pact]
     
     steps:
     - uses: actions/checkout@v4
@@ -177,6 +206,74 @@ jobs:
     - name: Build Docker image
       run: |
         docker build -t productivity-platform:latest .
+
+    - name: Generate SBOM (Syft)
+      uses: anchore/sbom-action@v0
+      with:
+        image: productivity-platform:latest
+        format: spdx-json
+        output-file: sbom.spdx.json
+
+    - name: Upload SBOM artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: sbom
+        path: sbom.spdx.json
+  
+  helm:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+      - name: Lint Helm charts
+        run: |
+          helm lint k8s/helm/core || exit 1
+          helm lint k8s/helm/gateway || exit 1
+          helm lint k8s/helm/reporting || exit 1
+          helm lint k8s/helm/attachments || exit 1
+      - name: Template Helm charts
+        run: |
+          helm template core k8s/helm/core --set image.repository=productivity-platform --set image.tag=latest
+          helm template gateway k8s/helm/gateway --set image.repository=gateway --set image.tag=latest
+          helm template reporting k8s/helm/reporting --set image.repository=reporting-service --set image.tag=latest
+          helm template attachments k8s/helm/attachments --set image.repository=attachments-service --set image.tag=latest
+
+  drills:
+    runs-on: ubuntu-latest
+    needs: [test]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: productivity_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run backup restore drill
+        run: |
+          chmod +x scripts/ci_backup_restore_check.sh
+          PG_DB=productivity_test PG_USER=postgres PG_PASSWORD=postgres RTO_THRESHOLD_SEC=60 ./scripts/ci_backup_restore_check.sh
+
+  soak:
+    runs-on: ubuntu-latest
+    if: ${{ vars.SOAK_TARGET_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run soak test with k6
+        run: |
+          chmod +x scripts/soak_k6.sh
+          TARGET_URL=${{ vars.SOAK_TARGET_URL }} DURATION=10m THRESHOLD_ERR_RATE=0.02 ./scripts/soak_k6.sh
     
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
@@ -189,3 +286,12 @@ jobs:
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: 'trivy-results.sarif'
+
+    - name: Install cosign
+      uses: sigstore/cosign-installer@v3.5.0
+
+    - name: Cosign attest SBOM (keyless)
+      env:
+        COSIGN_EXPERIMENTAL: 1
+      run: |
+        cosign attest --predicate sbom.spdx.json --type spdxjson productivity-platform:latest || true

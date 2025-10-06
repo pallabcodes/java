@@ -1,0 +1,22 @@
+# Ignore all .env files everywhere
+deploy/docker/.env
+**/.env
+
+.data
+
+# Ignore all logs directories
+logs/
+**/logs/
+
+# Ignore Git attributes files
+.gitattributes
+**/.gitattributes
+
+# Node.js specific (if using Node)
+node_modules/
+dist/
+build/
+
+# OS-specific
+.DS_Store
+Thumbs.db

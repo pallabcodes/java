@@ -26,7 +26,7 @@ fun AppScaffold() {
                         selected = route == dest.route,
                         onClick = { if (route != dest.route) navController.navigate(dest.route) },
                         icon = { Icon(painterResource(android.R.drawable.ic_menu_agenda), contentDescription = dest.route) },
-                        label = null
+                        label = { androidx.compose.material3.Text(text = when(dest){ is com.example.ledgerpay.navigation.Dest.Home -> androidx.compose.ui.res.stringResource(id = com.example.ledgerpay.R.string.tab_home); is com.example.ledgerpay.navigation.Dest.Payments -> androidx.compose.ui.res.stringResource(id = com.example.ledgerpay.R.string.tab_payments); else -> androidx.compose.ui.res.stringResource(id = com.example.ledgerpay.R.string.tab_ledger) }) }
                     )
                 }
             }

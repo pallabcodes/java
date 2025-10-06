@@ -1,18 +1,22 @@
 package com.netflix.productivity.config;
 
+import com.netflix.productivity.security.RevokedTokenStore;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
 
+import java.time.Instant;
 import java.util.List;
 
 public class TenantAwareJwtValidator implements OAuth2TokenValidator<Jwt> {
 
     private final List<String> allowedAudiences;
+    private final RevokedTokenStore revokedTokenStore;
 
-    public TenantAwareJwtValidator(List<String> allowedAudiences) {
+    public TenantAwareJwtValidator(List<String> allowedAudiences, RevokedTokenStore revokedTokenStore) {
         this.allowedAudiences = allowedAudiences;
+        this.revokedTokenStore = revokedTokenStore;
     }
 
     @Override
@@ -25,6 +29,17 @@ public class TenantAwareJwtValidator implements OAuth2TokenValidator<Jwt> {
         if (!ok) {
             return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Invalid audience", null));
         }
+
+        String jti = token.getId();
+        if (jti != null && revokedTokenStore.isRevoked(jti)) {
+            return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Token revoked", null));
+        }
+
+        Instant notBefore = token.getNotBefore();
+        if (notBefore != null && Instant.now().isBefore(notBefore)) {
+            return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Token not valid yet", null));
+        }
+
         return OAuth2TokenValidatorResult.success();
     }
 }

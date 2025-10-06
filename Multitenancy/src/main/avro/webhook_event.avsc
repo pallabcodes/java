@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "namespace": "com.netflix.productivity.avro",
+  "name": "WebhookEvent",
+  "fields": [
+    {"name": "tenantId", "type": "string"},
+    {"name": "aggregateType", "type": "string"},
+    {"name": "aggregateId", "type": "string"},
+    {"name": "eventType", "type": "string"},
+    {"name": "targetUrl", "type": "string"},
+    {"name": "signature", "type": "string"},
+    {"name": "issuedAt", "type": {"type":"long","logicalType":"timestamp-millis"}},
+    {"name": "payload", "type": "string"}
+  ]
+}

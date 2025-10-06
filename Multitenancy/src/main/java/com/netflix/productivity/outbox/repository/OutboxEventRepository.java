@@ -15,5 +15,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from OutboxEvent e where e.status = 'PENDING' and e.availableAt <= :now order by e.createdAt asc")
     List<OutboxEvent> findPendingForDispatch(@Param("now") OffsetDateTime now);
+
+    List<OutboxEvent> findTop100ByStatusOrderByCreatedAtAsc(String status);
 }
 

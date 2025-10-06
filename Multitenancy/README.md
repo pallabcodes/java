@@ -121,6 +121,9 @@ docker compose -f docker-compose.yml up -d
 docker compose -f docker-compose.kafka.yml up -d
 docker compose -f docker-compose.keycloak.yml up -d
 
+# Start config server (if not already up)
+docker compose up -d config-server
+
 # Run application with Keycloak (default dev)
 SPRING_PROFILES_ACTIVE=keycloak ./mvnw spring-boot:run
 ```
@@ -131,6 +134,8 @@ SPRING_PROFILES_ACTIVE=keycloak ./mvnw spring-boot:run
 - **Keycloak**: http://localhost:8080 (admin/admin)
 - **Health**: http://localhost:8080/actuator/health
 - **Metrics**: http://localhost:8080/actuator/prometheus
+- **Reporting Service**: http://localhost:8091/actuator/health
+- **Attachments Service**: http://localhost:8092/actuator/health
 
 ### **CI/CD Setup**
 
@@ -138,6 +143,33 @@ Required GitHub repository secrets:
 - `DOCKER_USERNAME`: Docker Hub username
 - `DOCKER_PASSWORD`: Docker Hub password
 - `TRIVY_TOKEN`: Trivy vulnerability scanner token (optional)
+
+### **Config Server**
+
+- Config server runs at `http://localhost:8888`
+- Client imports from config server via `spring.config.import=optional:configserver:http://localhost:8888`
+- Config repository path: `config-repo/` (loaded in native mode)
+
+### **Event Contracts and DLQ Operations**
+
+Schema Registry
+1. Start Schema Registry with `docker compose -f docker-compose.kafka.yml up -d schema-registry`
+2. Registry URL is `http://localhost:8085`
+
+Avro code generation
+1. Schemas are located at `src/main/avro`
+2. Run `./mvnw -q -DskipTests generate-sources` to generate Java classes
+3. Generated classes are placed under `target/generated-sources/avro`
+
+Kafka client configuration
+1. Registry URL set via `spring.kafka.properties.schema.registry.url`
+2. Producer uses `io.confluent.kafka.serializers.KafkaAvroSerializer`
+3. Consumer uses `io.confluent.kafka.serializers.KafkaAvroDeserializer` with `specific.avro.reader=true`
+
+DLQ operations
+1. List DLQ events `GET /api/admin/outbox/dlq`
+2. Replay DLQ events `POST /api/admin/outbox/dlq/replay`
+3. DLQ topic name default is `productivity.outbox.dlq`
 
 ## 🔧 **CONFIGURATION**
 
@@ -307,6 +339,7 @@ docker run -p 8080:8080 netflix-productivity-platform
 - **Multi-tenancy**: Detailed multi-tenant architecture
 - **Security**: Security implementation details
 - **Performance**: Performance optimization strategies
+- **Architecture Readiness Checklist**: see `docs/ARCHITECTURE_READINESS_CHECKLIST.md`
 
 ## 🤝 **CONTRIBUTING**
 

@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: configdemo
+  config:
+    import: optional:configserver:http://localhost:8888
+  profiles:
+    active: dev
+
+build:
+  id: ${ID}
+  version: ${VERSION}
+  name: ${NAME}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh
+
+#  BUILD_ID=4444;BUILD_NAME=NAME_TEST;BUILD_VERSION=1.0.0
+# ID=9999;NAME=NEW_NAME;VERSION=3.3.3.3

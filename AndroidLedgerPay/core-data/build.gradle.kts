@@ -1,3 +1,6 @@
-plugins { id("com.android.library"); id("org.jetbrains.kotlin.android"); kotlin("kapt") }
+plugins { alias(libs.plugins.android.library); alias(libs.plugins.kotlin.android); kotlin("kapt") }
 android { namespace = "com.example.ledgerpay.core.data"; compileSdk = 34; defaultConfig { minSdk = 24 } }
-dependencies { implementation(project(":core-network")); implementation("androidx.room:room-runtime:2.6.1"); kapt("androidx.room:room-compiler:2.6.1"); implementation("androidx.room:room-ktx:2.6.1") }
+dependencies {
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("org.robolectric:robolectric:4.11.1")
+    implementation(libs.datastore.preferences) implementation(project(":core-network")); implementation(libs.room.runtime); kapt(libs.room.compiler); implementation(libs.room.ktx) }

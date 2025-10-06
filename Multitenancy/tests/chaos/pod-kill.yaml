@@ -1,0 +1,15 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: kill-core-pod
+  namespace: productivity
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - productivity
+    labelSelectors:
+      app: core
+  duration: '30s'
+

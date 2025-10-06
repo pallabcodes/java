@@ -1,0 +1,41 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-provenance-sbom
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+  - name: require-slsa-provenance
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    verifyImages:
+    - imageReferences:
+      - "*"
+      attestations:
+      - predicateType: https://slsa.dev/provenance/v1
+        attestors:
+        - entries:
+          - keyless:
+              subject: "https://github.com/*"
+              issuer: "https://token.actions.githubusercontent.com"
+  - name: require-sbom-attestation
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    verifyImages:
+    - imageReferences:
+      - "*"
+      attestations:
+      - predicateType: https://spdx.dev/Document
+        attestors:
+        - entries:
+          - keyless:
+              subject: "https://github.com/*"
+              issuer: "https://token.actions.githubusercontent.com"
+

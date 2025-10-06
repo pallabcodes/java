@@ -4,6 +4,8 @@
 spring:
   application:
     name: netflix-productivity-platform
+  config:
+    import: optional:configserver:http://localhost:8888
   profiles:
     active: dev
   
@@ -80,6 +82,21 @@ server:
 
 # Management Configuration
 management:
+# Kafka and Schema Registry
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    properties:
+      schema.registry.url: http://localhost:8085
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        specific.avro.reader: true
+
   endpoints:
     web:
       exposure:

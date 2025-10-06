@@ -1,0 +1,17 @@
+spring:
+  profiles: vault
+  cloud:
+    vault:
+      uri: http://localhost:8200
+      token: root
+      scheme: http
+      database:
+        enabled: true
+        role: attachments-role
+      kv:
+        enabled: true
+        backend: secret
+  datasource:
+    url: jdbc:postgresql://localhost:5432/attachments_db
+    username: ${spring.cloud.vault.database.username}
+    password: ${spring.cloud.vault.database.password}

@@ -1,5 +1,13 @@
 package com.netflix.productivity.config;
 
+import com.netflix.productivity.security.RevokedTokenStore;
+import com.nimbusds.jose.jwk.source.DefaultJWKSetCache;
+import com.nimbusds.jose.jwk.source.JWKSetCache;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.jwk.source.RemoteJWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.DefaultResourceRetriever;
+import com.nimbusds.jose.util.ResourceRetriever;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +23,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 @Configuration
 public class JwtAuthConfig {
@@ -28,10 +38,25 @@ public class JwtAuthConfig {
     @Value("${spring.security.oauth2.resourceserver.jwt.principal-claim:sub}")
     private String principalClaim;
 
+    @Value("${security.jwks.connect-timeout-ms:2000}")
+    private int jwksConnectTimeoutMs;
+
+    @Value("${security.jwks.read-timeout-ms:2000}")
+    private int jwksReadTimeoutMs;
+
+    @Value("${security.jwks.cache-lifespan-seconds:300}")
+    private long jwksCacheLifespanSeconds;
+
+    @Value("${security.jwks.cache-refresh-seconds:300}")
+    private long jwksCacheRefreshSeconds;
+
     @Bean
-    public JwtDecoder jwtDecoder() {
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
-        decoder.setJwtValidator(new TenantAwareJwtValidator(allowedAudiences));
+    public JwtDecoder jwtDecoder(OAuth2TokenValidator<Jwt> tenantAwareJwtValidator) throws MalformedURLException {
+        ResourceRetriever retriever = new DefaultResourceRetriever(jwksConnectTimeoutMs, jwksReadTimeoutMs);
+        JWKSetCache cache = new DefaultJWKSetCache(jwksCacheLifespanSeconds, jwksCacheRefreshSeconds);
+        JWKSource<SecurityContext> jwkSource = new RemoteJWKSet<>(new URL(jwkSetUri), retriever, cache);
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSource(jwkSource).build();
+        decoder.setJwtValidator(tenantAwareJwtValidator);
         return decoder;
     }
 
@@ -58,6 +83,11 @@ public class JwtAuthConfig {
                 return token;
             }
         };
+    }
+
+    @Bean
+    public OAuth2TokenValidator<Jwt> tenantAwareJwtValidator(RevokedTokenStore revokedTokenStore) {
+        return new TenantAwareJwtValidator(allowedAudiences, revokedTokenStore);
     }
 }
 

@@ -1,0 +1,19 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: reporting
+  namespace: productivity
+spec:
+  hosts:
+    - reporting
+  http:
+    - route:
+        - destination:
+            host: reporting
+            subset: v1
+          weight: 90
+        - destination:
+            host: reporting
+            subset: v2
+          weight: 10
+

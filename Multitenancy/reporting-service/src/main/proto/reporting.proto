@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package com.netflix.reporting.grpc;
+
+option java_multiple_files = true;
+option java_package = "com.netflix.reporting.grpc";
+option java_outer_classname = "ReportingProto";
+
+service ReportingApi {
+  rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  string status = 1;
+}
+
+

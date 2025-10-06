@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pii-retention
+  namespace: productivity
+spec:
+  schedule: "0 3 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: pii-retain
+            image: postgres:15
+            env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              psql -h core-db -U $(DB_USER) -d productivity -c "DELETE FROM pii_data WHERE retention_until < now();"
+

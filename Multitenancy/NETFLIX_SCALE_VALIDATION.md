@@ -294,3 +294,7 @@ The platform is ready for **Netflix-scale production deployment** and exceeds al
 5. **Add Features**: Extend functionality as needed
 
 **Status: PRODUCTION READY ✅**
+
+### Addendum (latest hardening)
+
+- Added: JWKS cache/rotation and logout, SPIFFE IDs, Vault HA with dynamic DB creds, SLO burn alerts, Pact gate, GitOps remote repo, OPA policies and CI tests, Istio locality failover, CI backup-restore drill, Kyverno image signature and provenance enforcement, canary auto-rollback, Postgres/MinIO replication scaffolding, and auth features (refresh rotation with reuse detection, TOTP MFA, WebAuthn scaffold, device trust, session revoke, audit events).

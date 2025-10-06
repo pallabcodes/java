@@ -11,6 +11,17 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  reporting-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: reporting_db
+      POSTGRES_USER: reporting_user
+      POSTGRES_PASSWORD: reporting_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - reporting_db_data:/var/lib/postgresql/data
+
   app:
     build: .
     environment:
@@ -18,10 +29,111 @@ services:
       SPRING_DATASOURCE_USERNAME: productivity_user
       SPRING_DATASOURCE_PASSWORD: productivity_password
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
     ports:
       - "8080:8080"
     depends_on:
       - db
+      - config-server
+
+  reporting-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: reporting
+      POSTGRES_USER: reporting_user
+      POSTGRES_PASSWORD: reporting_password
+    ports:
+      - "5542:5432"
+    volumes:
+      - reporting_db_data:/var/lib/postgresql/data
+
+  reporting-service:
+    build:
+      context: ./reporting-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://reporting-db:5432/reporting
+      SPRING_DATASOURCE_USERNAME: reporting_user
+      SPRING_DATASOURCE_PASSWORD: reporting_password
+    ports:
+      - "8091:8091"
+    depends_on:
+      - reporting-db
+
+  attachments-service:
+    build:
+      context: ./attachments-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://attachments-db:5432/attachments_db
+      SPRING_DATASOURCE_USERNAME: attachments_user
+      SPRING_DATASOURCE_PASSWORD: attachments_pass
+      ATTACHMENTS_STORAGE_S3_ENDPOINT: http://minio:9000
+      ATTACHMENTS_STORAGE_S3_ACCESSKEY: minioadmin
+      ATTACHMENTS_STORAGE_S3_SECRETKEY: minioadmin
+      ATTACHMENTS_STORAGE_S3_BUCKET: productivity-attachments
+    ports:
+      - "8092:8092"
+    depends_on:
+      - attachments-db
+      - minio
+  
+  attachments-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: attachments_db
+      POSTGRES_USER: attachments_user
+      POSTGRES_PASSWORD: attachments_pass
+    ports:
+      - "5434:5432"
+    volumes:
+      - attachments_db_data:/var/lib/postgresql/data
+  
+  minio:
+    image: minio/minio:RELEASE.2024-06-11T03-13-30Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  reporting-service:
+    build:
+      context: ./reporting-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://reporting-db:5432/reporting_db
+      SPRING_DATASOURCE_USERNAME: reporting_user
+      SPRING_DATASOURCE_PASSWORD: reporting_pass
+      CORE_SERVICE_URL: http://app:8080
+    ports:
+      - "8091:8091"
+    depends_on:
+      - reporting-db
+      - app
+
+  config-server:
+    build:
+      context: ./config-server
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./config-repo:/workspace/config-repo
+    environment:
+      - SPRING_PROFILES_ACTIVE=native
+
+  vault:
+    image: hashicorp/vault:1.15
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+    ports:
+      - "8200:8200"
+    cap_add:
+      - IPC_LOCK
 
 volumes:
   db_data: {}
+  reporting_db_data: {}
+  attachments_db_data: {}
+  minio_data: {}

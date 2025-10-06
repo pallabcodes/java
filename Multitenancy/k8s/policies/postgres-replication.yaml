@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-primary
+  namespace: productivity
+spec:
+  serviceName: postgres-primary
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-primary
+  template:
+    metadata:
+      labels:
+        app: postgres-primary
+    spec:
+      containers:
+      - name: postgres
+        image: bitnami/postgresql:15
+        env:
+        - name: POSTGRESQL_REPLICATION_MODE
+          value: master
+        - name: POSTGRESQL_USERNAME
+          value: app
+        - name: POSTGRESQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: password
+        - name: POSTGRESQL_DATABASE
+          value: productivity
+        - name: POSTGRESQL_REPLICATION_USER
+          value: repl_user
+        - name: POSTGRESQL_REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: repl_password
+        ports:
+        - containerPort: 5432
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 20Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-replica
+  namespace: productivity
+spec:
+  serviceName: postgres-replica
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-replica
+  template:
+    metadata:
+      labels:
+        app: postgres-replica
+    spec:
+      containers:
+      - name: postgres
+        image: bitnami/postgresql:15
+        env:
+        - name: POSTGRESQL_REPLICATION_MODE
+          value: slave
+        - name: POSTGRESQL_MASTER_HOST
+          value: postgres-primary
+        - name: POSTGRESQL_MASTER_PORT_NUMBER
+          value: "5432"
+        - name: POSTGRESQL_REPLICATION_USER
+          value: repl_user
+        - name: POSTGRESQL_REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: repl_password
+        ports:
+        - containerPort: 5432
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 20Gi
+

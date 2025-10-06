@@ -1,0 +1,19 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: core
+  namespace: productivity
+spec:
+  hosts:
+    - core
+  http:
+    - route:
+        - destination:
+            host: core
+            subset: v1
+          weight: 90
+        - destination:
+            host: core
+            subset: v2
+          weight: 10
+

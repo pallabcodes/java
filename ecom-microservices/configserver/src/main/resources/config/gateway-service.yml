@@ -1,0 +1,97 @@
+#spring:
+#  cloud:
+#    gateway:
+#      routes:
+#        - id: product-service
+#          uri: lb://PRODUCT-SERVICE
+#          predicates:
+#            - Path=/products/**
+#          filters:
+#            - "RewritePath=/products(?<segment>/?.*),/api/products${segment}"
+#        - id: user-service
+#          uri: lb://USER-SERVICE
+#          predicates:
+#            - Path=/users/**
+#          filters:
+#            - "RewritePath=/users(?<segment>/?.*),/api/users${segment}"
+#        - id: order-service
+#          uri: lb://ORDER-SERVICE
+#          predicates:
+#            - Path=/orders/**, /cart/**
+#          filters:
+#            - "RewritePath=/(?<segment>.*),/api/${segment}"
+#        - id: eureka-server
+#          uri: http://localhost:8761
+#          predicates:
+#            - Path=/eureka/main
+#          filters:
+#            - SetPath=/
+#        - id: eureka-server-static
+#          uri: http://localhost:8761
+#          predicates:
+#            - Path=/eureka/**
+
+# http://localhost:8080/api/users -> http://localhost:8082/api/users
+server:
+  port: 8080
+
+#logging:
+#  level:
+#    root: info
+#    org.springframework.cloud.gateway.route.RouteDefinitionLocator: INFO
+#    org.springframework.cloud.gateway: TRACE
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+
+# Spring Cloud Gateway Route Configurations
+
+#spring.cloud.gateway.routes[0].id=product-service
+#spring.cloud.gateway.routes[0].uri=http://localhost:8081
+#spring.cloud.gateway.routes[0].predicates[0]=Path=/api/products/**
+#
+#spring.cloud.gateway.routes[1].id=user-service
+#spring.cloud.gateway.routes[1].uri=http://localhost:8082
+#spring.cloud.gateway.routes[1].predicates[0]=Path=/api/users/**
+#
+#spring.cloud.gateway.routes[2].id=order-service
+#spring.cloud.gateway.routes[2].uri=http://localhost:8083
+#spring.cloud.gateway.routes[2].predicates[0]=Path=/api/orders/**
+#spring.cloud.gateway.routes[2].predicates[1]=Path=/api/cart/**
+
+
+
+# Circuit Breaker
+resilience4j:
+  circuitbreaker:
+    instances:
+      ecomBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        slidingWindowType: count_based
+
+
+# SECURITY
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/ecom-app

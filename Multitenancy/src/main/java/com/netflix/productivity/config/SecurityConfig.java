@@ -1,6 +1,6 @@
 package com.netflix.productivity.config;
 
-import com.netflix.productivity.security.JwtAuthenticationFilter;
+// removed legacy JwtAuthenticationFilter usage in favor of Spring Security Resource Server
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -38,7 +38,7 @@ public class SecurityConfig {
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(Customizer.withDefaults())
             )
-            .addFilterBefore(new JwtAuthenticationFilter("netflix-productivity-jwt-secret-key"), UsernamePasswordAuthenticationFilter.class);
+            ;
         return http.build();
     }
 }

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: attachmentsservice
+spec:
+  selector:
+    app: attachmentsservice
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+      protocol: TCP
+      name: http

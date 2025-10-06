@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 public class BackchannelLogoutListener implements MessageListener {
 
     private final StringRedisTemplate redisTemplate;
+    private final RevokedTokenStore revokedTokenStore;
 
     @Value("${app.logout.backchannel.enabled:false}")
     private boolean enabled;
@@ -27,7 +28,10 @@ public class BackchannelLogoutListener implements MessageListener {
         try {
             String payload = redisTemplate.getStringSerializer().deserialize(message.getBody());
             log.info("Back-channel logout received: {}", payload);
-            // Expect payload to contain sessionId or userId; implement revocation hook
+            // Expect payload containing jti; revoke token id for remaining TTL
+            if (payload != null && !payload.isEmpty()) {
+                revokedTokenStore.revokeJti(payload);
+            }
         } catch (Exception e) {
             log.error("Error handling back-channel logout", e);
         }

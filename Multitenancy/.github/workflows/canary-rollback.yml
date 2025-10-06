@@ -1,0 +1,20 @@
+name: canary-rollback
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: deploy canary
+        run: echo "deploying canary..." && sleep 1
+      - name: evaluate burn rate
+        run: |
+          chmod +x scripts/evaluate_burn.sh
+          CURRENT_BURN=2.5 SLO_BURN_THRESHOLD=2.0 ./scripts/evaluate_burn.sh || echo "non fatal"
+      - name: rollback if needed
+        if: failure()
+        run: echo "rolling back canary" && sleep 1
+

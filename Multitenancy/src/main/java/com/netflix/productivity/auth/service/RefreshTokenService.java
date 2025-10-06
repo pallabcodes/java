@@ -47,6 +47,11 @@ public class RefreshTokenService {
     public String rotate(String tenantId, String oldRawToken, Duration ttl, String userAgent, String ip) {
         String oldHash = sha256(oldRawToken);
         RefreshToken old = findTokenOrThrow(tenantId, oldHash);
+        // Reuse detection: if token was already used (revoked), revoke all sessions for the user
+        if (old.getRevokedAt() != null) {
+            revokeAllForUser(tenantId, String.valueOf(old.getUser().getId()));
+            throw new IllegalArgumentException("refresh token reuse detected");
+        }
         assertActive(old);
 
         String newRaw = TokenUtil.generateToken(48);
@@ -73,6 +78,16 @@ public class RefreshTokenService {
         token.setRevokedAt(Instant.now());
     }
 
+    @Transactional
+    public void revokeById(String tenantId, Long tokenId) {
+        RefreshToken token = refreshTokenRepository.findById(tokenId)
+                .orElseThrow(() -> new IllegalArgumentException("refresh token not found"));
+        if (!tenantId.equals(token.getTenantId())) {
+            throw new IllegalArgumentException("forbidden");
+        }
+        token.setRevokedAt(Instant.now());
+    }
+
     public String mintAccessToken(User user) {
         return jwtTokenService.generateToken(user.getId().toString(), user.getTenantId(), user.getRolesAsNames());
     }
@@ -81,6 +96,10 @@ public class RefreshTokenService {
     public User getUserFromRefresh(String tenantId, String rawToken) {
         String hash = sha256(rawToken);
         RefreshToken token = findTokenOrThrow(tenantId, hash);
+        if (token.getRevokedAt() != null) {
+            revokeAllForUser(tenantId, String.valueOf(token.getUser().getId()));
+            throw new IllegalArgumentException("refresh token reuse detected");
+        }
         assertActive(token);
         return token.getUser();
     }

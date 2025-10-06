@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "namespace": "com.netflix.productivity.avro",
+  "name": "AuditEvent",
+  "fields": [
+    {"name": "tenantId", "type": "string"},
+    {"name": "aggregateType", "type": "string"},
+    {"name": "aggregateId", "type": "string"},
+    {"name": "eventType", "type": "string"},
+    {"name": "occurredAt", "type": {"type":"long","logicalType":"timestamp-millis"}},
+    {"name": "payload", "type": "string"}
+  ]
+}

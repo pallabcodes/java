@@ -1,0 +1,44 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: core
+  namespace: productivity
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: core
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: reporting
+  namespace: productivity
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: reporting
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: attachments
+  namespace: productivity
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: attachments
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gateway
+  namespace: productivity
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: gateway
+

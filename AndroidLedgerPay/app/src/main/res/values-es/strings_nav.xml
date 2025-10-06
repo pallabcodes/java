@@ -1,0 +1,5 @@
+<resources>
+    <string name="tab_home">Inicio</string>
+    <string name="tab_payments">Pagos</string>
+    <string name="tab_ledger">Libro</string>
+</resources>

@@ -1,0 +1,5 @@
+<resources>
+    <string name="tab_home">Home</string>
+    <string name="tab_payments">Payments</string>
+    <string name="tab_ledger">Ledger</string>
+</resources>

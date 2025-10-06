@@ -1,0 +1,39 @@
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: core-service-spiffeid
+spec:
+  spiffeIDTemplate: "spiffe://productivity.local/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}"
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: productivity
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: core
+---
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: reporting-service-spiffeid
+spec:
+  spiffeIDTemplate: "spiffe://productivity.local/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}"
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: productivity
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: reporting
+---
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: attachments-service-spiffeid
+spec:
+  spiffeIDTemplate: "spiffe://productivity.local/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}"
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: productivity
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: attachments
+
