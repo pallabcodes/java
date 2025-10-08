@@ -1,22 +1,28 @@
 package com.example.ledgerpay.core.network
 
+import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.time.Duration
 
 object ApiClient {
-    fun retrofit(baseUrl: String): Retrofit = Retrofit.Builder()
-        .baseUrl(baseUrl)
-        .client(
-        val pinner = okhttp3.CertificatePinner.Builder()
+    fun retrofit(baseUrl: String): Retrofit {
+        val pinner = CertificatePinner.Builder()
             // .add("example.org", "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
             .build()
+
         val client = OkHttpClient.Builder()
             .certificatePinner(pinner)
-            .addInterceptor(okhttp3.logging.HttpLoggingInterceptor().apply { level = okhttp3.logging.HttpLoggingInterceptor.Level.BASIC })
-            .callTimeout(java.time.Duration.ofSeconds(10))
+            .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
+            .callTimeout(Duration.ofSeconds(10))
             .build()
-            .addInterceptor(okhttp3.logging.HttpLoggingInterceptor().apply { level = okhttp3.logging.HttpLoggingInterceptor.Level.BASIC }).callTimeout(java.time.Duration.ofSeconds(10)).build())
-        .addConverterFactory(MoshiConverterFactory.create())
-        .build()
+
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .client(client)
+            .addConverterFactory(MoshiConverterFactory.create())
+            .build()
+    }
 }

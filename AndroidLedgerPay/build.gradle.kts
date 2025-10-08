@@ -12,13 +12,13 @@ subprojects {
     plugins.apply("org.jlleitschuh.gradle.ktlint")
     plugins.apply("io.gitlab.arturbosch.detekt")
 
-    detekt {
+    extensions.configure(io.gitlab.arturbosch.detekt.extensions.DetektExtension::class) {
         config = files(rootProject.file("detekt.yml"))
         buildUponDefaultConfig = true
         autoCorrect = false
     }
 
-    ktlint {
+    extensions.configure(org.jlleitschuh.gradle.ktlint.KtlintExtension::class) {
         android.set(true)
         outputToConsole.set(true)
         ignoreFailures.set(false)

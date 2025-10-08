@@ -6,6 +6,11 @@ plugins {
 }
 
 android {
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
     namespace = "com.example.ledgerpay"
     compileSdk = 34
     defaultConfig {
@@ -25,11 +30,12 @@ android {
         debug { isMinifyEnabled = false }
     }
     buildFeatures { compose = true }
-    composeOptions { kotlinCompilerExtensionVersion = "1.5.13" }
+    composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 
 dependencies {
+    implementation(libs.android.material)
     implementation(platform(libs.compose.bom))
     androidTestImplementation(platform(libs.compose.bom))
 
