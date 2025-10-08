@@ -1,0 +1,10 @@
+{
+  "project_name": "my-monolith",
+  "group_id": "com.example",
+  "artifact_id": "app",
+  "base_package": "com.example.app",
+  "multitenancy": ["on", "off"],
+  "security": ["on", "off"],
+  "db": ["postgres", "mysql", "h2"],
+  "messaging": ["none", "kafka", "rabbit"]
+}

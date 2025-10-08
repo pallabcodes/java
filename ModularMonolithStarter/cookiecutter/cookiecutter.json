@@ -1,0 +1,11 @@
+{
+  "project_name": "my-modular-monolith",
+  "group_id": "com.example",
+  "artifact_id": "app",
+  "base_package": "com.example.app",
+  "arch": ["layered", "hex", "clean", "feature", "cqrs"],
+  "multitenancy": ["on", "off"],
+  "security": ["on", "off"],
+  "db": ["postgres", "mysql", "h2"],
+  "messaging": ["none", "kafka", "rabbit"]
+}
