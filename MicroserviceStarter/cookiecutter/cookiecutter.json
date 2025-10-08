@@ -1,0 +1,12 @@
+{
+  "service_name": "my-service",
+  "group_id": "com.example",
+  "artifact_id": "service",
+  "base_package": "com.example.service",
+  "preset": ["rest", "event", "reactive"],
+  "security": ["on", "off"],
+  "db": ["postgres", "mysql", "h2"],
+  "messaging": ["none", "kafka", "rabbit"],
+  "discovery": ["none", "eureka", "consul"],
+  "gateway": ["none", "spring-cloud-gateway", "nginx"]
+}
