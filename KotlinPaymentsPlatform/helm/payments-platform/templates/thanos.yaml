@@ -1,0 +1,212 @@
+{{- if .Values.thanos.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: thanos
+  namespace: monitoring
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: thanos
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources:
+  - pods
+  - services
+  - endpoints
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: thanos
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: thanos
+subjects:
+- kind: ServiceAccount
+  name: thanos
+  namespace: monitoring
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: thanos-store-gateway
+  namespace: monitoring
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+    app: thanos-store-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thanos-store-gateway
+  serviceName: thanos-store-gateway
+  template:
+    metadata:
+      labels:
+        app: thanos-store-gateway
+    spec:
+      serviceAccountName: thanos
+      containers:
+      - name: thanos
+        image: quay.io/thanos/thanos:latest
+        args:
+        - store
+        - --data-dir=/data
+        - --objstore.config-file=/etc/thanos/objstore.yml
+        ports:
+        - name: http
+          containerPort: 10902
+        volumeMounts:
+        - name: objstore-secret
+          mountPath: /etc/thanos/
+        - name: data
+          mountPath: /data
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+      volumes:
+      - name: objstore-secret
+        secret:
+          secretName: thanos-objstore-secret
+      - name: data
+        emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thanos-query
+  namespace: monitoring
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+    app: thanos-query
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: thanos-query
+  template:
+    metadata:
+      labels:
+        app: thanos-query
+    spec:
+      serviceAccountName: thanos
+      containers:
+      - name: thanos
+        image: quay.io/thanos/thanos:latest
+        args:
+        - query
+        - --http-address=0.0.0.0:9090
+        - --store=thanos-store-gateway:10901
+        - --store=prometheus-server:9090
+        ports:
+        - name: http
+          containerPort: 9090
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thanos-compactor
+  namespace: monitoring
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+    app: thanos-compactor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thanos-compactor
+  template:
+    metadata:
+      labels:
+        app: thanos-compactor
+    spec:
+      serviceAccountName: thanos
+      containers:
+      - name: thanos
+        image: quay.io/thanos/thanos:latest
+        args:
+        - compact
+        - --data-dir=/data
+        - --objstore.config-file=/etc/thanos/objstore.yml
+        - --retention.resolution-raw=30d
+        - --retention.resolution-5m=1y
+        - --retention.resolution-1h=5y
+        volumeMounts:
+        - name: objstore-secret
+          mountPath: /etc/thanos/
+        - name: data
+          mountPath: /data
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+      volumes:
+      - name: objstore-secret
+        secret:
+          secretName: thanos-objstore-secret
+      - name: data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-query
+  namespace: monitoring
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: thanos-query
+  ports:
+  - name: http
+    port: 9090
+    targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: thanos-query
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: thanos-auth
+    nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required'
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  rules:
+  - host: thanos.{{ .Values.cluster.domain | default "yourdomain.com" }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: thanos-query
+            port:
+              number: 9090
+{{- end }}

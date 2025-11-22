@@ -1,0 +1,304 @@
+# Default values for payments-platform Helm chart
+# This file contains configuration for all microservices in the payments platform
+
+global:
+  imageRegistry: "your-registry.com"
+  imagePullSecrets:
+    - name: registry-secret
+  env: production
+
+# API Gateway Configuration
+apiGateway:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: payments/gateway
+    tag: ""
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "prod"
+    - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+      value: "http://eureka:8761/eureka/"
+  config:
+    server:
+      port: 8080
+    routes:
+      - id: payments-service
+        uri: "lb://payments-service"
+        predicates:
+          - Path=/api/v1/payments/**
+      - id: risk-service
+        uri: "lb://risk-service"
+        predicates:
+          - Path=/api/v1/risk/**
+      - id: ledger-service
+        uri: "lb://ledger-service"
+        predicates:
+          - Path=/api/v1/ledger/**
+
+# Payments Service Configuration
+paymentsService:
+  enabled: true
+  replicaCount: 5
+  image:
+    repository: payments/payments-service
+    tag: ""
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8081
+    targetPort: 8081
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "prod"
+    - name: DB_HOST
+      valueFrom:
+        secretKeyRef:
+          name: payments-db-secret
+          key: host
+    - name: DB_PORT
+      value: "5432"
+    - name: DB_NAME
+      value: "payments"
+    - name: DB_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: payments-db-secret
+          key: username
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: payments-db-secret
+          key: password
+  config:
+    server:
+      port: 8081
+    datasource:
+      url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      driver-class-name: org.postgresql.Driver
+    jpa:
+      hibernate:
+        ddl-auto: validate
+
+# Risk Service Configuration
+riskService:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: payments/risk-service
+    tag: ""
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8083
+    targetPort: 8083
+  resources:
+    limits:
+      cpu: 800m
+      memory: 768Mi
+    requests:
+      cpu: 300m
+      memory: 384Mi
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "prod"
+    - name: DB_HOST
+      valueFrom:
+        secretKeyRef:
+          name: risk-db-secret
+          key: host
+    - name: DB_NAME
+      value: "risk"
+  config:
+    server:
+      port: 8083
+    app:
+      risk:
+        rules:
+          amount:
+            highThreshold: 10000
+            criticalThreshold: 50000
+          countries:
+            blacklisted: ["KP", "IR", "CU", "SY"]
+          velocity:
+            maxTransactionsPerHour: 10
+
+# Ledger Service Configuration
+ledgerService:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: payments/ledger-service
+    tag: ""
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8084
+    targetPort: 8084
+  resources:
+    limits:
+      cpu: 600m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "prod"
+  config:
+    server:
+      port: 8084
+
+# PostgreSQL Configuration
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "change-me-in-production"
+    username: "payments"
+    password: "change-me-in-production"
+    database: "payments"
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: "gp3"
+
+# Redis Configuration
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: "gp3"
+
+# RabbitMQ Configuration
+rabbitmq:
+  enabled: true
+  auth:
+    username: "guest"
+    password: "guest"
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: "gp3"
+
+# Monitoring Stack
+monitoring:
+  prometheus:
+    enabled: true
+    server:
+      persistentVolume:
+        enabled: true
+        size: 50Gi
+  grafana:
+    enabled: true
+    adminPassword: "admin"
+    persistence:
+      enabled: true
+      size: 10Gi
+  alertmanager:
+    enabled: true
+
+# Ingress Configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: payments.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: payments-tls
+      hosts:
+        - payments.yourdomain.com
+
+# Security Configuration
+security:
+  networkPolicies:
+    enabled: true
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    fsGroup: 1001
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1001
+    capabilities:
+      drop:
+        - ALL
+
+# Istio Service Mesh Configuration
+istio:
+  enabled: true
+
+# Kyverno Policy Engine
+kyverno:
+  enabled: true
+
+# Cert-Manager SSL Certificates
+certManager:
+  enabled: true
+  email: "admin@yourdomain.com"
+  cloudflare:
+    email: "admin@yourdomain.com"
+
+# KubeCost Cost Monitoring
+kubecost:
+  enabled: true
+
+# Thanos Long-term Metrics Storage
+thanos:
+  enabled: true
+
+# Cluster Configuration
+cluster:
+  domain: "yourdomain.com"
+
+# Application Security Configuration
+app:
+  security:
+    cors:
+      allowedOrigins: "https://payments.yourdomain.com"
+      allowedMethods: "GET,POST,PUT,DELETE,OPTIONS"
+      allowedHeaders: "Authorization,Content-Type,Accept,X-Requested-With"
+      allowCredentials: true
+    jwt:
+      secret: "${JWT_SECRET:change-this-in-production-jwt-secret-key}"
+      expiration: 3600000
+    rateLimiting:
+      enabled: true
+      requestsPerMinute: 100
+    inputValidation:
+      maxStringLength: 1000
+      maxArraySize: 100
+      maxDepth: 5
+

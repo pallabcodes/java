@@ -21,7 +21,12 @@ dependencies {
     kapt(libs.room.compiler)
     implementation(libs.room.ktx)
     implementation(libs.datastore.preferences)
+    implementation(libs.security.crypto)
+    implementation(libs.timber)
 
     testImplementation("androidx.test:core:1.6.1")
     testImplementation("org.robolectric:robolectric:4.11.1")
+    testImplementation(libs.coroutines.test)
+    testImplementation("io.mockk:mockk:1.13.10")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }

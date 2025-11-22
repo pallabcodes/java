@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "payments-platform.fullname" . }}-config
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+data:
+  # Application configuration
+  application-k8s.yml: |
+    spring:
+      application:
+        name: payments-platform
+      profiles:
+        active: k8s
+      config:
+        import: "configserver:"
+
+    # Kubernetes-specific configuration
+    cloud:
+      kubernetes:
+        config:
+          enabled: true
+        secrets:
+          enabled: true
+          paths: /etc/secrets
+
+    # Logging configuration for Kubernetes
+    logging:
+      level:
+        com.example.kotlinpay: INFO
+        org.springframework.security: DEBUG
+        org.springframework.web: DEBUG
+      pattern:
+        console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-},%X{spanId:-}] %-5level %logger{36} - %msg%n"
+        file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{requestId:-}] %-5level %logger{36} - %msg%n"
+      file:
+        name: /var/log/payments/application.log
+
+    # Management endpoints
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,metrics,prometheus,env,configprops,beans,mappings
+          base-path: /actuator
+      endpoint:
+        health:
+          show-details: when_authorized
+          probes:
+            enabled: true
+      metrics:
+        export:
+          prometheus:
+            enabled: true
+        tags:
+          application: {{ include "payments-platform.fullname" . }}
+          environment: {{ .Values.global.env }}
+          version: {{ .Chart.AppVersion }}
+
+    # External service URLs
+    services:
+      config-server:
+        url: http://config-server:8888
+      eureka-server:
+        url: http://eureka-server:8761/eureka/
+
+  # Database configuration
+  db-config.yml: |
+    spring:
+      datasource:
+        hikari:
+          maximum-pool-size: 20
+          minimum-idle: 5
+          connection-timeout: 20000
+          idle-timeout: 300000
+          max-lifetime: 1200000
+          leak-detection-threshold: 60000
+          pool-name: PaymentsHikariPool
+
+      jpa:
+        hibernate:
+          ddl-auto: validate
+        show-sql: false
+        properties:
+          hibernate:
+            dialect: org.hibernate.dialect.PostgreSQLDialect
+            jdbc:
+              batch_size: 25
+            order_inserts: true
+            order_updates: true
+            batch_versioned_data: true
+
+  # Redis configuration
+  redis-config.yml: |
+    spring:
+      redis:
+        timeout: 2000ms
+        lettuce:
+          pool:
+            max-active: 8
+            max-idle: 8
+            min-idle: 0
+            max-wait: -1ms
+
+  # Security configuration
+  security-config.yml: |
+    app:
+      security:
+        jwt:
+          expiration: 3600000
+          issuer: payments-platform
+        rate-limiting:
+          enabled: true
+          requests-per-minute: 100
+
+  # Risk engine configuration
+  risk-config.yml: |
+    app:
+      risk:
+        cache:
+          enabled: true
+          ttl: 1800000
+        rules:
+          amount:
+            high-threshold: {{ .Values.riskService.config.app.risk.rules.amount.highThreshold }}
+            critical-threshold: {{ .Values.riskService.config.app.risk.rules.amount.criticalThreshold }}
+          countries:
+            blacklisted: {{ .Values.riskService.config.app.risk.rules.countries.blacklisted | toString | quote }}
+          velocity:
+            max-transactions-per-hour: {{ .Values.riskService.config.app.risk.rules.velocity.maxTransactionsPerHour }}
+
+  # Monitoring configuration
+  monitoring-config.yml: |
+    management:
+      metrics:
+        export:
+          prometheus:
+            pushgateway:
+              enabled: true
+              base-url: http://prometheus-pushgateway:9091
+              push-rate: 30s
+              job: payments-platform

@@ -1,0 +1,161 @@
+{{- if .Values.kubecost.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubecost-service-account
+  namespace: kubecost
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubecost-cost-analyzer
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - secrets
+  - services
+  - persistentvolumeclaims
+  - persistentvolumes
+  - serviceaccounts
+  - pods
+  - nodes
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - daemonsets
+  - statefulsets
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubecost-cost-analyzer
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubecost-cost-analyzer
+subjects:
+- kind: ServiceAccount
+  name: kubecost-service-account
+  namespace: kubecost
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubecost-cost-analyzer
+  namespace: kubecost
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+    app: kubecost-cost-analyzer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubecost-cost-analyzer
+  template:
+    metadata:
+      labels:
+        app: kubecost-cost-analyzer
+    spec:
+      serviceAccountName: kubecost-service-account
+      containers:
+      - image: kubecost/cost-analyzer:latest
+        name: cost-analyzer
+        ports:
+        - containerPort: 9090
+          name: http
+        env:
+        - name: PROMETHEUS_SERVER_ENDPOINT
+          value: "http://prometheus-server.monitoring.svc.cluster.local"
+        - name: KUBECOST_NAMESPACE
+          value: "kubecost"
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubecost-cost-analyzer
+  namespace: kubecost
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: kubecost-cost-analyzer
+  ports:
+  - name: http
+    port: 9090
+    targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kubecost-cost-analyzer
+  namespace: kubecost
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: kubecost-auth
+    nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required'
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  rules:
+  - host: kubecost.{{ .Values.cluster.domain | default "yourdomain.com" }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kubecost-cost-analyzer
+            port:
+              number: 9090
+{{- end }}

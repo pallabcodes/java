@@ -1,0 +1,22 @@
+{{- range $service := list "api-gateway" "payments-service" "risk-service" "ledger-service" }}
+{{- if $.Values.$service.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "payments-platform.fullname" $ }}-{{ $service }}
+  labels:
+    {{- include "payments-platform.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $service }}
+spec:
+  type: {{ $.Values.$service.service.type }}
+  ports:
+    - port: {{ $.Values.$service.service.port }}
+      targetPort: {{ $.Values.$service.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "payments-platform.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $service }}
+{{- end }}
+{{- end }}

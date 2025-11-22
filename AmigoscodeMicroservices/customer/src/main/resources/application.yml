@@ -29,3 +29,57 @@ eureka:
         register-with-eureka: true
         enabled: true
 
+# Security Configuration
+app:
+  security:
+    cors:
+      allowed-origins: "http://localhost:3000,http://localhost:8080"
+      allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+      allowed-headers: "Authorization,Content-Type,Accept,X-Requested-With"
+      allow-credentials: true
+    jwt:
+      secret: "${JWT_SECRET:customer-service-jwt-secret-key-change-in-production}"
+      expiration: 86400000  # 24 hours in milliseconds
+    rate-limiting:
+      enabled: true
+      requests-per-minute: 60
+    input-validation:
+      max-string-length: 1000
+      max-array-size: 100
+      max-depth: 5
+
+# Logging Configuration
+# Monitoring and Observability
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env,configprops,beans,mappings
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+      show-components: always
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: customer-service
+      environment: dev
+      version: 1.0.0
+
+logging:
+  level:
+    com.amigoscode.customer: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n [requestId=%X{requestId}]"
+  file:
+    name: logs/customer-service.log
+    max-size: 10MB
+    max-history: 30
+

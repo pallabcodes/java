@@ -1,0 +1,140 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: ChaosExperiment
+metadata:
+  name: payments-platform-chaos-experiments
+  namespace: chaos-testing
+spec:
+  experiments:
+  # Network Latency Experiment
+  - name: network-latency
+    templateType: NetworkChaos
+    templateSpec:
+      selector:
+        namespaces:
+          - payments-platform
+        labelSelectors:
+          "app.kubernetes.io/name": "payments-platform"
+      mode: all
+      action: delay
+      delay:
+        latency: "1000ms"
+        jitter: "200ms"
+      duration: "5m"
+
+  # Pod Failure Experiment
+  - name: pod-failure
+    templateType: PodChaos
+    templateSpec:
+      selector:
+        namespaces:
+          - payments-platform
+        labelSelectors:
+          "app.kubernetes.io/component": "payments-service"
+      mode: one
+      action: pod-failure
+      duration: "3m"
+
+  # Database Connection Loss
+  - name: db-connection-loss
+    templateType: NetworkChaos
+    templateSpec:
+      selector:
+        namespaces:
+          - payments-platform
+        labelSelectors:
+          "app.kubernetes.io/name": "payments-platform"
+      mode: all
+      action: loss
+      loss:
+        loss: "100"
+        correlation: "100"
+      target:
+        selector:
+          namespaces:
+            - database
+          labelSelectors:
+            "app.kubernetes.io/name": "postgresql"
+        mode: all
+      direction: to
+      duration: "2m"
+
+  # High CPU Usage
+  - name: high-cpu-stress
+    templateType: StressChaos
+    templateSpec:
+      selector:
+        namespaces:
+          - payments-platform
+        labelSelectors:
+          "app.kubernetes.io/component": "risk-service"
+      mode: one
+      stressors:
+        cpu:
+          workers: 2
+          load: 80
+      duration: "5m"
+
+  # Memory Pressure
+  - name: memory-pressure
+    templateType: StressChaos
+    templateSpec:
+      selector:
+        namespaces:
+          - payments-platform
+        labelSelectors:
+          "app.kubernetes.io/component": "ledger-service"
+      mode: one
+      stressors:
+        memory:
+          workers: 1
+          size: "512MB"
+      duration: "3m"
+
+  # Service Degradation
+  - name: service-degradation
+    templateType: HTTPChaos
+    templateSpec:
+      selector:
+        namespaces:
+          - payments-platform
+        labelSelectors:
+          "app.kubernetes.io/component": "api-gateway"
+      target: Request
+      port: 8080
+      method: POST
+      path: "/api/v1/risk/decisions"
+      mode: all
+      action: delay
+      delay: "5s"
+      duration: "2m"
+
+  # Disk I/O Stress
+  - name: disk-io-stress
+    templateType: IOChaos
+    templateSpec:
+      selector:
+        namespaces:
+          - payments-platform
+        labelSelectors:
+          "app.kubernetes.io/component": "ledger-service"
+      mode: one
+      action: latency
+      delay: "100ms"
+      duration: "4m"
+      volumePath: "/var/lib/postgresql/data"
+      path: "/var/lib/postgresql/data/pg_wal/*"
+      percent: 50
+
+  # Node Failure Simulation
+  - name: node-failure
+    templateType: PodChaos
+    templateSpec:
+      selector:
+        namespaces:
+          - payments-platform
+        labelSelectors:
+          "app.kubernetes.io/name": "payments-platform"
+      mode: all
+      action: pod-kill
+      gracePeriod: 0
+      duration: "1m"

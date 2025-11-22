@@ -1,0 +1,18 @@
+{{- range $service := list "api-gateway" "payments-service" "risk-service" "ledger-service" }}
+{{- if $.Values.$service.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "payments-platform.fullname" $ }}-{{ $service }}-pdb
+  labels:
+    {{- include "payments-platform.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $service }}
+spec:
+  minAvailable: {{ $.Values.$service.pdb.minAvailable | default "50%" }}
+  selector:
+    matchLabels:
+      {{- include "payments-platform.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $service }}
+{{- end }}
+{{- end }}

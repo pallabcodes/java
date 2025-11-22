@@ -22,4 +22,6 @@ dependencies {
     api(libs.okhttp.logging)
     api(libs.moshi)
     api(libs.retrofit.converter.moshi)
+
+    testImplementation(libs.junit4)
 }

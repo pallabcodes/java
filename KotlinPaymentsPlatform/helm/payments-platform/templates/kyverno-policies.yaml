@@ -1,0 +1,164 @@
+{{- if .Values.kyverno.enabled }}
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: payments-platform-security
+  annotations:
+    policies.kyverno.io/title: Payments Platform Security
+    policies.kyverno.io/category: Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+  - name: validate-security-context
+    match:
+      resources:
+        kinds:
+        - Pod
+        namespaces:
+        - payments-platform
+    validate:
+      message: "Security context must be properly configured"
+      pattern:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: ">0"
+            fsGroup: ">0"
+          containers:
+          - securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: ">0"
+              capabilities:
+                drop:
+                - ALL
+  - name: validate-resource-limits
+    match:
+      resources:
+        kinds:
+        - Pod
+        namespaces:
+        - payments-platform
+    validate:
+      message: "Resource limits must be specified"
+      pattern:
+        spec:
+          containers:
+          - resources:
+              limits:
+                memory: "?*"
+                cpu: "?*"
+              requests:
+                memory: "?*"
+                cpu: "?*"
+  - name: validate-image-registry
+    match:
+      resources:
+        kinds:
+        - Pod
+        namespaces:
+        - payments-platform
+    validate:
+      message: "Images must come from approved registries"
+      pattern:
+        spec:
+          containers:
+          - image: "your-registry.com/*"
+  - name: validate-probes
+    match:
+      resources:
+        kinds:
+        - Pod
+        namespaces:
+        - payments-platform
+    validate:
+      message: "Health probes must be configured"
+      pattern:
+        spec:
+          containers:
+          - livenessProbe:
+              "?*": "?*"
+            readinessProbe:
+              "?*": "?*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: payments-platform-networking
+  annotations:
+    policies.kyverno.io/title: Payments Platform Networking
+    policies.kyverno.io/category: Networking
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+  - name: validate-network-policies
+    match:
+      resources:
+        kinds:
+        - Pod
+        namespaces:
+        - payments-platform
+    validate:
+      message: "Network policies should be configured"
+      pattern:
+        metadata:
+          labels:
+            network-policy: "?*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: payments-platform-compliance
+  annotations:
+    policies.kyverno.io/title: Payments Platform Compliance
+    policies.kyverno.io/category: Compliance
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+  - name: validate-labels
+    match:
+      resources:
+        kinds:
+        - Pod
+        - Service
+        - ConfigMap
+        - Secret
+        namespaces:
+        - payments-platform
+    validate:
+      message: "Required compliance labels must be present"
+      pattern:
+        metadata:
+          labels:
+            compliance/pci-dss: "required"
+            compliance/gdpr: "required"
+            security/data-classification: "?*"
+            security/encryption: "?*"
+  - name: validate-annotations
+    match:
+      resources:
+        kinds:
+        - Pod
+        - Service
+        namespaces:
+        - payments-platform
+    validate:
+      message: "Required compliance annotations must be present"
+      pattern:
+        metadata:
+          annotations:
+            compliance/owner: "?*"
+            compliance/business-unit: "?*"
+            compliance/cost-center: "?*"
+            compliance/data-retention: "?*"
+{{- end }}

@@ -1,0 +1,52 @@
+{{- if .Values.certManager.enabled }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: {{ .Values.certManager.email | required "certManager.email is required" }}
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+    - dns01:
+        cloudflare:
+          email: {{ .Values.certManager.cloudflare.email | required "certManager.cloudflare.email is required" }}
+          apiKeySecretRef:
+            name: cloudflare-api-key
+            key: api-key
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "payments-platform.fullname" . }}-tls
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "payments-platform.fullname" . }}-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - {{ .Values.ingress.host | required "ingress.host is required" }}
+  - {{ .Values.ingress.host | replace "." "-" }}-internal.{{ .Values.cluster.domain | default "cluster.local" }}
+---
+apiVersion: external-dns.k8s.io/v1beta1
+kind: DNSEndpoint
+metadata:
+  name: {{ include "payments-platform.fullname" . }}-dns
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  endpoints:
+  - dnsName: {{ .Values.ingress.host | required "ingress.host is required" }}
+    recordType: A
+    targets:
+    - {{ .Values.ingress.loadBalancerIP | required "ingress.loadBalancerIP is required" }}
+{{- end }}

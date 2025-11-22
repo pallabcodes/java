@@ -1,0 +1,17 @@
+apiVersion: v2
+name: payments-platform
+description: A Helm chart for Kotlin Payments Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - kotlin
+  - payments
+  - microservices
+  - risk-assessment
+home: https://github.com/your-org/KotlinPaymentsPlatform
+sources:
+  - https://github.com/your-org/KotlinPaymentsPlatform
+maintainers:
+  - name: Payments Team
+    email: payments@company.com

@@ -1,0 +1,162 @@
+{{- if .Values.istio.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: {{ include "payments-platform.fullname" . }}-gateway
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - {{ .Values.ingress.host | default "*" }}
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: {{ include "payments-platform.fullname" . }}-tls
+    hosts:
+    - {{ .Values.ingress.host | default "*" }}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "payments-platform.fullname" . }}-virtualservice
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  hosts:
+  - {{ .Values.ingress.host | default "*" }}
+  gateways:
+  - {{ include "payments-platform.fullname" . }}-gateway
+  http:
+  - match:
+    - uri:
+        prefix: "/api/v1/payments"
+    route:
+    - destination:
+        host: {{ include "payments-platform.fullname" . }}-payments-service
+        port:
+          number: 8081
+    timeout: 30s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+    corsPolicy:
+      allowOrigin:
+      - {{ .Values.app.security.cors.allowedOrigins | default "*" }}
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - Authorization
+      - Content-Type
+      - X-Requested-With
+      allowCredentials: true
+    headers:
+      request:
+        add:
+          x-request-id: "%REQ(X-REQUEST-ID)%"
+          x-forwarded-for: "%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%"
+  - match:
+    - uri:
+        prefix: "/api/v1/risk"
+    route:
+    - destination:
+        host: {{ include "payments-platform.fullname" . }}-risk-service
+        port:
+          number: 8083
+    timeout: 10s
+    retries:
+      attempts: 2
+      perTryTimeout: 5s
+  - match:
+    - uri:
+        prefix: "/api/v1/ledger"
+    route:
+    - destination:
+        host: {{ include "payments-platform.fullname" . }}-ledger-service
+        port:
+          number: 8084
+    timeout: 15s
+    retries:
+      attempts: 2
+      perTryTimeout: 7s
+  - match:
+    - uri:
+        prefix: "/"
+    route:
+    - destination:
+        host: {{ include "payments-platform.fullname" . }}-api-gateway
+        port:
+          number: 8080
+    timeout: 30s
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: {{ include "payments-platform.fullname" . }}-destinationrule
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  host: "*.{{ include "payments-platform.fullname" . }}.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    loadBalancer:
+      simple: ROUND_ROBIN
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 10
+        maxRequestsPerConnection: 10
+    outlierDetection:
+      consecutive5xxErrors: 3
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+---
+apiVersion: networking.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: {{ include "payments-platform.fullname" . }}-peerauthentication
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "payments-platform.name" . }}
+  mtls:
+    mode: STRICT
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ include "payments-platform.fullname" . }}-authpolicy
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "payments-platform.name" . }}
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"]
+    to:
+    - operation:
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+        paths: ["/api/v1/*"]
+{{- end }}

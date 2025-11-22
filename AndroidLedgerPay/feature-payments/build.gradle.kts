@@ -23,4 +23,5 @@ dependencies {
 
     testImplementation(libs.junit4)
     testImplementation(libs.coroutines.test)
+    testImplementation("io.mockk:mockk:1.13.10")
 }

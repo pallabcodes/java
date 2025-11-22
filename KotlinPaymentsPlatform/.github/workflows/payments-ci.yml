@@ -1,0 +1,264 @@
+name: Payments Platform CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-shared:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.gradle/caches
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/build.gradle.kts') }}
+
+    - name: Run shared library tests
+      working-directory: shared
+      run: ../gradlew :shared:test
+
+  test-ledger:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ledger_test
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Run ledger service tests
+      working-directory: ledger-service
+      run: ../gradlew :ledger-service:test
+
+  test-payments:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: payments_test
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Run payments service tests
+      working-directory: payments-service
+      run: ../gradlew :payments-service:test
+
+  test-risk:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: risk_test
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Run risk service tests
+      working-directory: risk-service
+      run: ../gradlew :risk-service:test
+
+  test-gateway:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Run API gateway tests
+      working-directory: api-gateway
+      run: ../gradlew :api-gateway:test
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: [test-shared, test-ledger, test-payments, test-risk, test-gateway]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: integration_test
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+      rabbitmq:
+        image: rabbitmq:3-management
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Run integration tests
+      run: ./gradlew integrationTest
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: integration-test
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: [integration-test, security-scan]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push ledger service
+      uses: docker/build-push-action@v5
+      with:
+        context: ./ledger-service
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/ledger-service:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build and push payments service
+      uses: docker/build-push-action@v5
+      with:
+        context: ./payments-service
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/payments-service:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build and push risk service
+      uses: docker/build-push-action@v5
+      with:
+        context: ./risk-service
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/risk-service:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build and push API gateway
+      uses: docker/build-push-action@v5
+      with:
+        context: ./api-gateway
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/payments-gateway:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build-docker
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Deploy to staging with Helm
+      run: |
+        aws eks update-kubeconfig --region us-east-1 --name payments-platform-staging
+        helm upgrade payments-platform-staging ./helm/payments-platform \
+          --install \
+          --namespace staging \
+          --set image.tag=${{ github.sha }} \
+          --wait
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: build-docker
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Deploy to production with Helm
+      run: |
+        aws eks update-kubeconfig --region us-east-1 --name payments-platform-production
+        helm upgrade payments-platform-production ./helm/payments-platform \
+          --install \
+          --namespace production \
+          --set image.tag=${{ github.sha }} \
+          --wait

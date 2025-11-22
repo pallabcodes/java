@@ -1,0 +1,94 @@
+{{- if .Values.security.networkPolicies.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "payments-platform.fullname" . }}-network-policy
+  labels:
+    {{- include "payments-platform.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "payments-platform.name" . }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from API Gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ include "payments-platform.name" . }}-gateway
+      ports:
+        - protocol: TCP
+          port: 8081  # payments-service
+        - protocol: TCP
+          port: 8083  # risk-service
+        - protocol: TCP
+          port: 8084  # ledger-service
+    # Allow traffic from ingress
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080  # api-gateway
+    # Allow traffic from monitoring
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: http
+        - protocol: TCP
+          port: https
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow traffic to Kubernetes API
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow traffic to databases
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgresql
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5432  # PostgreSQL
+        - protocol: TCP
+          port: 6379  # Redis
+        - protocol: TCP
+          port: 5672  # RabbitMQ
+    # Allow traffic to monitoring
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: http
+        - protocol: TCP
+          port: https
+    # Allow HTTPS outbound (for external APIs)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+{{- end }}
+
