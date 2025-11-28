@@ -2,22 +2,58 @@ server:
   port: 8085
 
 spring:
+  application:
+    name: ledger-service
+
   datasource:
-    url: jdbc:h2:mem:ledger;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: ""
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ledger_service}
+    username: ${DB_USERNAME:ledger_user}
+    password: ${DB_PASSWORD:ledger_password}
+    driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
       ddl-auto: validate
     properties:
-      hibernate.format_sql: true
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
   flyway:
     enabled: true
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:kotlin-payments-jwt-secret-key}
+  access-token-expiry: ${JWT_ACCESS_TOKEN_EXPIRY:3600000}
+  refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:86400000}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ledger-service
+      environment: dev
+      version: 1.0.0
+
+logging:
+  level:
+    root: INFO
+    com.example.kotlinpay: DEBUG
+    org.springframework.security: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{correlationId}] %-5level %logger{36} - %msg%n"
+    file:
+      name: logs/${spring.application.name}.log
+      max-size: 10MB
+      max-history: 30
 

@@ -1,0 +1,194 @@
+# Event-Driven Video Streaming Analytics Platform - Infrastructure Configuration
+# Netflix production-grade EDA infrastructure settings
+
+server:
+  port: 8081
+
+spring:
+  application:
+    name: event-driven-streaming-infrastructure
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:event_store}
+    username: ${DB_USERNAME:event_store_user}
+    password: ${DB_PASSWORD:event_store_password}
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          lob:
+            non_contextual_creation: true
+        format_sql: true
+        show_sql: ${SHOW_SQL:false}
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    schema-registry-url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      max-in-flight-requests-per-connection: 1
+      enable-idempotence: true
+      compression-type: lz4
+
+    consumer:
+      group-id: event-infrastructure
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      max-poll-records: 100
+      fetch-min-bytes: 1024
+      fetch-max-wait: 500ms
+
+# Application-specific configuration
+app:
+  kafka:
+    event-bus:
+      retention-hours: ${EVENT_RETENTION_HOURS:168}
+      partitions: ${EVENT_PARTITIONS:6}
+      replication-factor: ${EVENT_REPLICATION_FACTOR:3}
+
+  event-store:
+    table-name: ${EVENT_STORE_TABLE:event_store}
+    snapshot-table-name: ${EVENT_SNAPSHOT_TABLE:event_snapshots}
+
+  schema-registry:
+    url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+    auto-register-schemas: ${AUTO_REGISTER_SCHEMAS:true}
+
+# OpenTelemetry Configuration
+opentelemetry:
+  service:
+    name: event-infrastructure
+    version: 1.0.0
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+  traces:
+    sampler: ${OTEL_TRACES_SAMPLER:always_on}
+
+# Management & Observability
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,kafka
+      base-path: /actuator
+
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      service: event-infrastructure
+
+  info:
+    env:
+      enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    com.netflix.streaming: ${LOG_LEVEL:INFO}
+    org.springframework.kafka: WARN
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg%n"
+    correlation: "[%X{correlationId:-}] [%X{tenantId:-}] [%X{userId:-}]"
+
+# Resilience Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      event-publishing:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 10000
+        failureRateThreshold: 50
+        slowCallRateThreshold: 50
+        slowCallDurationThreshold: 2000
+
+  retry:
+    instances:
+      event-publishing:
+        max-attempts: 3
+        waitDuration: 100
+        retry-exceptions:
+          - org.springframework.kafka.KafkaException
+
+# Security Configuration (basic for infrastructure)
+spring.security:
+  enabled: ${SECURITY_ENABLED:false}
+
+# Docker Compose override for local development
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/event_store
+    username: event_store_user
+    password: event_store_password
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+opentelemetry:
+  exporter:
+    logging:
+      enabled: true
+
+# Test profile configuration
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: jdbc:tc:postgresql:15-alpine:///testdb
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+logging:
+  level:
+    com.netflix.streaming: DEBUG

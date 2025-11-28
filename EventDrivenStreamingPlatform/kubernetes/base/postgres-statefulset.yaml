@@ -1,0 +1,206 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: streaming-platform
+  labels:
+    app: postgres
+    component: database
+    tier: data
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        component: database
+        tier: data
+    spec:
+      # Security context
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        runAsNonRoot: true
+
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+          name: postgres
+          protocol: TCP
+
+        env:
+        - name: POSTGRES_DB
+          value: "event_streaming_platform"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: PGDATA
+          value: "/var/lib/postgresql/data/pgdata"
+        - name: POSTGRES_INITDB_ARGS
+          value: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+
+        # Resource limits
+        resources:
+          limits:
+            memory: 1Gi
+            cpu: "1000m"
+          requests:
+            memory: 512Mi
+            cpu: "500m"
+
+        # Liveness probe
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - $(POSTGRES_USER)
+            - -d
+            - event_streaming_platform
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+
+        # Readiness probe
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - $(POSTGRES_USER)
+            - -d
+            - event_streaming_platform
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+
+        # Volume mounts
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+          subPath: postgres
+        - name: postgres-init
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 999
+          capabilities:
+            drop:
+            - ALL
+
+      # Init containers for setup
+      initContainers:
+      - name: init-postgres
+        image: busybox:1.35
+        command:
+        - sh
+        - -c
+        - |
+          chown -R 999:999 /var/lib/postgresql/data
+          chmod 700 /var/lib/postgresql/data
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+
+      # Volumes
+      volumes:
+      - name: postgres-init
+        configMap:
+          name: postgres-init-config
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+
+  # Volume claim template
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-pvc
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 50Gi
+      storageClassName: fast-ssd
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: streaming-platform
+  labels:
+    app: postgres
+    component: database
+    tier: data
+spec:
+  selector:
+    app: postgres
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-config
+  namespace: streaming-platform
+data:
+  init.sql: |
+    -- Database initialization for Event-Driven Streaming Platform
+    -- This script runs when PostgreSQL starts for the first time
+
+    -- Create extensions
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+
+    -- Set up event store schema (will be migrated by Flyway)
+    -- This ensures the database is ready for the application
+
+    -- Create monitoring user (optional)
+    DO $$
+    BEGIN
+       IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'monitoring') THEN
+          CREATE ROLE monitoring LOGIN PASSWORD 'monitoring_password';
+          GRANT CONNECT ON DATABASE event_streaming_platform TO monitoring;
+          GRANT SELECT ON ALL TABLES IN SCHEMA public TO monitoring;
+       END IF;
+    END
+    $$;
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: streaming-platform
+type: Opaque
+data:
+  # Base64 encoded values (these are example values)
+  username: c3RyZWFtaW5nX3VzZXI=  # streaming_user
+  password: c3RyZWFtaW5nX3Bhc3N3b3JkX3N0cm9uZ18xMjM=  # streaming_password_strong_123

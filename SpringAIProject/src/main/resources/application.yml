@@ -5,10 +5,14 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,loggers,env
+co        include: health,info,metrics,loggers,env,prometheus
   endpoint:
     health:
       probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
         enabled: true
 
 spring:
@@ -16,7 +20,7 @@ spring:
     name: spring-ai-project
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY:arbitrary-key}
+      api-key: ${OPENAI_API_KEY:your-openai-api-key}
       base-url: ${OPENAI_BASE_URL:https://api.openai.com}
       chat:
         options:
@@ -24,6 +28,12 @@ spring:
       embedding:
         options:
           model: ${OPENAI_EMBED_MODEL:text-embedding-3-small}
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:netflix-spring-ai-secret-key-32-chars}
+  access-token-expiry: ${JWT_ACCESS_TOKEN_EXPIRY:3600000}
+  refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:86400000}
 
 resilience4j:
   retry:
@@ -45,5 +55,7 @@ logging:
   level:
     root: INFO
     com.netflix.springai: DEBUG
+    org.springframework.security: WARN
   pattern:
-    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{correlationId}] %logger - %msg%n"
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{correlationId}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{correlationId}] %thread %logger{36} - %msg%n"

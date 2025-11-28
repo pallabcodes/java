@@ -1,0 +1,391 @@
+version: '3.8'
+
+services:
+  # ===========================================
+  # INFRASTRUCTURE SERVICES
+  # ===========================================
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: sde2-postgres
+    environment:
+      POSTGRES_DB: sde2_essentials
+      POSTGRES_USER: sde2_user
+      POSTGRES_PASSWORD: sde2_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/main/resources/db/migration:/docker-entrypoint-initdb.d
+    networks:
+      - sde2-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sde2_user -d sde2_essentials"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache (for future use)
+  redis:
+    image: redis:7-alpine
+    container_name: sde2-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sde2-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Keycloak OAuth2 Identity Provider
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: sde2-keycloak
+    ports:
+      - "8081:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: sde2_user
+      KC_DB_PASSWORD: sde2_password
+      KC_HOSTNAME: localhost
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    networks:
+      - sde2-network
+    healthcheck:
+      test: ["CMD", "exec", "3<>/dev/tcp/localhost/8080", "&&", "echo", "-e", "''"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ===========================================
+  # MONITORING & OBSERVABILITY
+  # ===========================================
+
+  # Istio Service Mesh
+  istio-base:
+    image: istio/base:latest
+    container_name: sde2-istio-base
+    profiles: ["istio"]
+    networks:
+      - sde2-network
+
+  istiod:
+    image: istio/pilot:latest
+    container_name: sde2-istiod
+    profiles: ["istio"]
+    ports:
+      - "15010:15010"
+      - "15012:15012"
+      - "15014:15014"
+      - "15017:15017"
+    environment:
+      - PILOT_CERT_PROVIDER=kubernetes
+      - CLUSTER_ID=kubernetes
+      - EXTERNAL_ISTIOD=false
+    volumes:
+      - istio-data:/var/lib/istio
+    networks:
+      - sde2-network
+    restart: unless-stopped
+
+  istio-ingressgateway:
+    image: istio/proxyv2:latest
+    container_name: sde2-istio-ingress
+    profiles: ["istio"]
+    ports:
+      - "80:8080"
+      - "443:8443"
+      - "9090:9090"
+      - "9443:9443"
+    environment:
+      - PILOT_CERT_PROVIDER=kubernetes
+      - CLUSTER_ID=kubernetes
+    volumes:
+      - istio-data:/var/lib/istio
+    networks:
+      - sde2-network
+    restart: unless-stopped
+
+  # OpenTelemetry Collector with Istio integration
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: sde2-otel-collector
+    command: ["--config=/etc/otel/config.yaml"]
+    ports:
+      - "4317:4317"   # gRPC
+      - "4318:4318"   # HTTP
+      - "8889:8889"   # Prometheus metrics
+    volumes:
+      - ./otel-config.yaml:/etc/otel/config.yaml:ro
+    networks:
+      - sde2-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8889/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Tempo (Distributed Tracing)
+  tempo:
+    image: grafana/tempo:latest
+    container_name: sde2-tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    ports:
+      - "3200:3200"   # Tempo API
+      - "9095:9095"   # Tempo gRPC
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/tmp/tempo
+    networks:
+      - sde2-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3200/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ELK Stack for Log Aggregation and SIEM
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: sde2-elasticsearch
+    profiles: ["monitoring"]
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - sde2-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  logstash:
+    image: logstash:8.11.0
+    container_name: sde2-logstash
+    profiles: ["monitoring"]
+    environment:
+      - LS_JAVA_OPTS=-Xmx256m -Xms256m
+    ports:
+      - "5000:5000"   # TCP input
+      - "8080:8080"   # HTTP input
+    volumes:
+      - ./monitoring/elk-stack/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./monitoring/elk-stack/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+    networks:
+      - sde2-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9600/_node/stats || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  kibana:
+    image: kibana:8.11.0
+    container_name: sde2-kibana
+    profiles: ["monitoring"]
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - XPACK_SECURITY_ENABLED=false
+    volumes:
+      - ./monitoring/elk-stack/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    networks:
+      - sde2-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Prometheus Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sde2-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - sde2-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sde2-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: sde2_password
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_INSTALL_PLUGINS: grafana-opentelemetry-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - sde2-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Loki (Log Aggregation)
+  loki:
+    image: grafana/loki:latest
+    container_name: sde2-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - sde2-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Promtail (Log Shipping)
+  promtail:
+    image: grafana/promtail:latest
+    container_name: sde2-promtail
+    volumes:
+      - ./monitoring/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - /var/log/containers:/var/log/containers:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yaml
+    networks:
+      - sde2-network
+    restart: unless-stopped
+
+  # ===========================================
+  # APPLICATION SERVICES
+  # ===========================================
+
+  # SDE2 Essentials Sample Application
+  sde2-essentials:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sde2-essentials-app
+    ports:
+      - "8080:8080"   # HTTP REST API
+      - "9090:9090"   # gRPC API
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8080
+      GRPC_SERVER_PORT: 9090
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/sde2-essentials
+      DB_URL: jdbc:postgresql://postgres:5432/sde2_essentials
+      DB_USERNAME: sde2_user
+      DB_PASSWORD: sde2_password
+      OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
+      TRACING_SAMPLING_PROBABILITY: 1.0
+      LOG_LEVEL_ROOT: INFO
+      LOG_LEVEL_APP: DEBUG
+      LOG_LEVEL_SECURITY: WARN
+      RATE_LIMIT_REQUESTS_PER_MINUTE: 100
+      HEALTH_CHECK_INTERVAL: 30s
+    networks:
+      - sde2-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      otel-collector:
+        condition: service_healthy
+    restart: unless-stopped
+
+# ===========================================
+# VOLUMES
+# ===========================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  tempo_data:
+    driver: local
+  loki_data:
+    driver: local
+  keycloak_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  logstash_data:
+    driver: local
+  kibana_data:
+    driver: local
+
+# ===========================================
+# NETWORKS
+# ===========================================
+networks:
+  sde2-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16

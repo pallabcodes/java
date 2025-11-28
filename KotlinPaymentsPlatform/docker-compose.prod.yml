@@ -1,239 +1,63 @@
 version: '3.8'
 
-# Production-like Docker Compose for Kotlin Payments Platform
-# This configuration simulates production environment for testing
-
 services:
+  # ===========================================
+  # INFRASTRUCTURE SERVICES
+  # ===========================================
+
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: payments-postgres
+    container_name: kotlin-payments-postgres
     environment:
       POSTGRES_DB: payments_platform
-      POSTGRES_USER: payments_user
-      POSTGRES_PASSWORD: payments_password_strong_123
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./shared/src/main/resources/db/migration:/docker-entrypoint-initdb.d
+      POSTGRES_USER: kotlin_user
+      POSTGRES_PASSWORD: kotlin_password
+      POSTGRES_MULTIPLE_DATABASES: risk_service:5432,risk_service,ledger_service,payments_service
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deployment/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
     networks:
-      - payments-network
-    restart: unless-stopped
+      - kotlin-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U payments_user -d payments_platform"]
+      test: ["CMD-SHELL", "pg_isready -U kotlin_user -d payments_platform"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: payments-redis
-    command: redis-server --appendonly yes --requirepass payments_redis_pass
+    container_name: kotlin-payments-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - payments-network
-    restart: unless-stopped
+      - kotlin-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
-      timeout: 3s
+      timeout: 5s
       retries: 5
-
-  # RabbitMQ Message Broker
-  rabbitmq:
-    image: rabbitmq:3.12-management-alpine
-    container_name: payments-rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: payments_user
-      RABBITMQ_DEFAULT_PASS: payments_rabbit_pass_strong
-      RABBITMQ_DEFAULT_VHOST: payments_vhost
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - payments-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
-  # API Gateway
-  api-gateway:
-    build:
-      context: ./api-gateway
-      dockerfile: Dockerfile
-    container_name: payments-api-gateway
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8761/eureka/
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_USERNAME: payments_user
-      SPRING_RABBITMQ_PASSWORD: payments_rabbit_pass_strong
-    ports:
-      - "8080:8080"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - payments-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # ===========================================
+  # MONITORING & OBSERVABILITY
+  # ===========================================
 
-  # Payments Service
-  payments-service:
-    build:
-      context: ./payments-service
-      dockerfile: Dockerfile
-    container_name: payments-service
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: payments_platform
-      DB_USERNAME: payments_user
-      DB_PASSWORD: payments_password_strong_123
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: payments_redis_pass
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8761/eureka/
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_USERNAME: payments_user
-      SPRING_RABBITMQ_PASSWORD: payments_rabbit_pass_strong
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - payments-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Risk Service
-  risk-service:
-    build:
-      context: ./risk-service
-      dockerfile: Dockerfile
-    container_name: payments-risk-service
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: payments_platform
-      DB_USERNAME: payments_user
-      DB_PASSWORD: payments_password_strong_123
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: payments_redis_pass
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8761/eureka/
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_USERNAME: payments_user
-      SPRING_RABBITMQ_PASSWORD: payments_rabbit_pass_strong
-      # Risk evaluation configuration
-      RISK_AMOUNT_HIGH_THRESHOLD: 10000
-      RISK_AMOUNT_CRITICAL_THRESHOLD: 50000
-      RISK_COUNTRIES_BLACKLISTED: KP,IR,CU,SY
-      RISK_VELOCITY_MAX_PER_HOUR: 10
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - payments-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Ledger Service
-  ledger-service:
-    build:
-      context: ./ledger-service
-      dockerfile: Dockerfile
-    container_name: payments-ledger-service
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: payments_platform
-      DB_USERNAME: payments_user
-      DB_PASSWORD: payments_password_strong_123
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: payments_redis_pass
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8761/eureka/
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_USERNAME: payments_user
-      SPRING_RABBITMQ_PASSWORD: payments_rabbit_pass_strong
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - payments-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8084/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Eureka Service Registry
-  eureka:
-    image: your-registry/eureka-server:latest
-    container_name: payments-eureka
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-    ports:
-      - "8761:8761"
-    networks:
-      - payments-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8761 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Prometheus Monitoring
+  # Prometheus Metrics
   prometheus:
     image: prom/prometheus:latest
-    container_name: payments-prometheus
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
+    container_name: kotlin-payments-prometheus
     ports:
       - "9090:9090"
-    networks:
-      - payments-network
-    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -241,71 +65,183 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
+    networks:
+      - kotlin-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
-  # Grafana Dashboard
+  # Grafana Dashboards
   grafana:
     image: grafana/grafana:latest
-    container_name: payments-grafana
+    container_name: kotlin-payments-grafana
+    ports:
+      - "3000:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: admin_password_strong_123
+      GF_SECURITY_ADMIN_PASSWORD: kotlin_password
       GF_USERS_ALLOW_SIGN_UP: false
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
-    ports:
-      - "3000:3000"
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
     networks:
-      - payments-network
+      - kotlin-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
-    depends_on:
-      - prometheus
 
-  # Jaeger Tracing
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    container_name: payments-jaeger
+  # Zipkin Distributed Tracing
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: kotlin-payments-zipkin
+    ports:
+      - "9411:9411"
     environment:
-      COLLECTOR_OTLP_ENABLED: true
-    ports:
-      - "16686:16686"
-      - "14268:14268"
+      STORAGE_TYPE: mem
     networks:
-      - payments-network
+      - kotlin-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9411/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
-  # Nginx Load Balancer
-  nginx:
-    image: nginx:alpine
-    container_name: payments-nginx
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+  # ===========================================
+  # MICROSERVICES
+  # ===========================================
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: kotlin-payments-gateway
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JWT_SECRET: kotlin-payments-jwt-secret-key
+      JWT_ACCESS_TOKEN_EXPIRY: 3600000
+      JWT_REFRESH_TOKEN_EXPIRY: 86400000
+    networks:
+      - kotlin-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Risk Service
+  risk-service:
+    build:
+      context: .
+      dockerfile: risk-service/Dockerfile
+    container_name: kotlin-payments-risk
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:postgresql://postgres:5432/risk_service
+      DB_USERNAME: kotlin_user
+      DB_PASSWORD: kotlin_password
+      JWT_SECRET: kotlin-payments-jwt-secret-key
+      JWT_ACCESS_TOKEN_EXPIRY: 3600000
+      JWT_REFRESH_TOKEN_EXPIRY: 86400000
+    networks:
+      - kotlin-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8083/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
-      - api-gateway
-    networks:
-      - payments-network
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
+  # Payments Service
+  payments-service:
+    build:
+      context: .
+      dockerfile: payments-service/Dockerfile
+    container_name: kotlin-payments-core
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:postgresql://postgres:5432/payments_service
+      DB_USERNAME: kotlin_user
+      DB_PASSWORD: kotlin_password
+      JWT_SECRET: kotlin-payments-jwt-secret-key
+      JWT_ACCESS_TOKEN_EXPIRY: 3600000
+      JWT_REFRESH_TOKEN_EXPIRY: 86400000
+    networks:
+      - kotlin-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8086/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Ledger Service
+  ledger-service:
+    build:
+      context: .
+      dockerfile: ledger-service/Dockerfile
+    container_name: kotlin-payments-ledger
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:postgresql://postgres:5432/ledger_service
+      DB_USERNAME: kotlin_user
+      DB_PASSWORD: kotlin_password
+      JWT_SECRET: kotlin-payments-jwt-secret-key
+      JWT_ACCESS_TOKEN_EXPIRY: 3600000
+      JWT_REFRESH_TOKEN_EXPIRY: 86400000
+    networks:
+      - kotlin-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8085/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+# ===========================================
+# VOLUMES
+# ===========================================
 volumes:
   postgres_data:
     driver: local
   redis_data:
-    driver: local
-  rabbitmq_data:
     driver: local
   prometheus_data:
     driver: local
   grafana_data:
     driver: local
 
+# ===========================================
+# NETWORKS
+# ===========================================
 networks:
-  payments-network:
+  kotlin-network:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/16
-
+        - subnet: 172.21.0.0/16

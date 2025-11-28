@@ -8,33 +8,53 @@ spring:
     active: dev
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/risk_service
-    username: risk_user
-    password: risk_password
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/risk_service}
+    username: ${DB_USERNAME:risk_user}
+    password: ${DB_PASSWORD:risk_password}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
 
-  security:
-    user:
-      name: risk_admin
-      password: risk_password
+  flyway:
+    enabled: true
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:kotlin-payments-jwt-secret-key}
+  access-token-expiry: ${JWT_ACCESS_TOKEN_EXPIRY:3600000}
+  refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:86400000}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
   metrics:
     export:
       prometheus:
         enabled: true
+    tags:
+      application: risk-service
+      environment: dev
+      version: 1.0.0
 
 logging:
   level:
-    com.example.kotlinpay.risk: DEBUG
+    root: INFO
+    com.example.kotlinpay: DEBUG
+    org.springframework.security: WARN
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{correlationId}] %-5level %logger{36} - %msg%n"
+    file:
+      name: logs/${spring.application.name}.log
+      max-size: 10MB
+      max-history: 30

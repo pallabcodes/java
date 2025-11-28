@@ -1,0 +1,146 @@
+# Event-Driven Video Streaming Analytics Platform - Analytics Service
+# Real-Time Analytics with Event-Driven Projections and WebSocket Streaming
+
+server:
+  port: 8083
+
+spring:
+  application:
+    name: analytics-service
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:analytics_service}
+    username: ${DB_USERNAME:analytics_user}
+    password: ${DB_PASSWORD:analytics_password}
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+# WebSocket Configuration
+websocket:
+  dashboard:
+    endpoint: /ws/dashboard
+    content-endpoint: /ws/content/{contentId}
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
+
+# Analytics Configuration
+analytics:
+  real-time:
+    metrics-ttl: ${METRICS_TTL:300}  # 5 minutes
+    dashboard-update-interval: ${UPDATE_INTERVAL:1000}  # 1 second
+    max-concurrent-connections: ${MAX_CONNECTIONS:1000}
+
+  projections:
+    user-cache-size: ${USER_CACHE_SIZE:10000}
+    content-cache-size: ${CONTENT_CACHE_SIZE:5000}
+    cleanup-interval: ${CLEANUP_INTERVAL:3600000}  # 1 hour
+
+  clickhouse:
+    url: ${CLICKHOUSE_URL:jdbc:clickhouse://localhost:8123/analytics}
+    username: ${CLICKHOUSE_USER:default}
+    password: ${CLICKHOUSE_PASSWORD:}
+
+# OpenTelemetry Configuration
+opentelemetry:
+  service:
+    name: analytics-service
+    version: 1.0.0
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+
+# Management & Observability
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,websocket
+      base-path: /actuator
+
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      service: analytics-service
+      component: event-projections
+
+  websocket:
+    enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    com.netflix.streaming.analytics: ${LOG_LEVEL:INFO}
+    org.springframework.kafka: WARN
+    org.springframework.web.socket: DEBUG
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg%n"
+    correlation: "[%X{correlationId:-}] [%X{tenantId:-}] [%X{userId:-}]"
+
+# Resilience Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      event-processing:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 10000
+        failureRateThreshold: 50
+
+  ratelimiter:
+    instances:
+      websocket-connections:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0s
+
+# Test profile configuration
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: jdbc:tc:postgresql:15-alpine:///testdb
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+
+  redis:
+    host: localhost
+    port: 6379
+
+logging:
+  level:
+    com.netflix.streaming.analytics: DEBUG

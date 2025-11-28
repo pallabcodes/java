@@ -1,11 +1,14 @@
 package com.amigoscode.customer;
 
+import com.amigoscode.customer.security.RequiresPermission;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +25,7 @@ public class CustomerController {
      * Register a new customer with security validation
      */
     @PostMapping("/register")
+    @RequiresPermission(value = {"customer.create", "ADMIN"}, resource = "#request.email")
     public ResponseEntity<CustomerRegistrationResponse> registerCustomer(
             @Valid @RequestBody CustomerRegistrationRequest request) {
 
@@ -55,15 +59,30 @@ public class CustomerController {
     }
 
     /**
-     * Get customer by ID (authenticated endpoint)
+     * Get customer by ID (authenticated endpoint with ABAC)
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<CustomerResponse> getCustomer(@PathVariable Integer id) {
-        log.info("Fetching customer with ID: {}", id);
+    @RequiresPermission(value = {"customer.read", "ADMIN"},
+                       resource = "#id",
+                       action = "READ",
+                       checkTenantOwnership = true)
+    public ResponseEntity<CustomerResponse> getCustomer(@PathVariable Integer id, Authentication authentication) {
+        log.info("Fetching customer with ID: {} for user: {}", id, authentication.getName());
 
         try {
             Customer customer = customerService.getCustomerById(id);
+
+            // ABAC: Check if user owns this customer record or has ADMIN role
+            String userEmail = getUserEmailFromAuthentication(authentication);
+            boolean isOwner = customer.getEmail().equals(userEmail);
+            boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+            if (!isOwner && !isAdmin) {
+                log.warn("Access denied: User {} attempted to access customer record {} belonging to {}",
+                        userEmail, id, customer.getEmail());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             CustomerResponse response = new CustomerResponse(
                 customer.getId(),
@@ -72,10 +91,11 @@ public class CustomerController {
                 customer.getEmail()
             );
 
+            log.info("Successfully retrieved customer {} for user {}", id, userEmail);
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            log.error("Failed to fetch customer with ID: {}", id, e);
+            log.error("Failed to fetch customer with ID: {} for user: {}", id, authentication.getName(), e);
             return ResponseEntity.notFound().build();
         }
     }
@@ -86,6 +106,16 @@ public class CustomerController {
     @GetMapping("/health")
     public ResponseEntity<HealthResponse> health() {
         return ResponseEntity.ok(new HealthResponse("UP", "Customer service is healthy"));
+    }
+
+    /**
+     * Helper method to extract user email from OAuth2 authentication
+     */
+    private String getUserEmailFromAuthentication(Authentication authentication) {
+        if (authentication.getPrincipal() instanceof Jwt jwt) {
+            return jwt.getClaimAsString("email");
+        }
+        return authentication.getName();
     }
 }
 

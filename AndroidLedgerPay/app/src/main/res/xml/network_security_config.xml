@@ -1,4 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false" />
+    <!-- Security: Disable cleartext traffic -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Security: Domain-specific configuration for Stripe -->
+    <domain-config>
+        <domain includeSubdomains="true">api.stripe.com</domain>
+        <pin-set expiration="2025-12-31">
+            <!-- Security: Certificate pinning for Stripe API with rotation -->
+            <pin digest="SHA-256">4y/HZzNGpAX5X0dGL2hI9sE3XGQz6wK8kEb9zTQ6QK8=</pin> <!-- Primary pin -->
+            <pin digest="SHA-256">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</pin> <!-- Backup pin for rotation -->
+        </pin-set>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Security: Domain-specific configuration for LedgerPay API -->
+    <domain-config>
+        <domain includeSubdomains="true">api.ledgerpay.com</domain>
+        <pin-set expiration="2025-12-31">
+            <!-- Security: Certificate pinning for LedgerPay API -->
+            <pin digest="SHA-256">CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=</pin> <!-- Primary pin -->
+            <pin digest="SHA-256">DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD=</pin> <!-- Backup pin for rotation -->
+        </pin-set>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Security: Domain-specific configuration for Firebase -->
+    <domain-config>
+        <domain includeSubdomains="true">fcm.googleapis.com</domain>
+        <domain includeSubdomains="true">firestore.googleapis.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Security: Trust user-added certificates in debug builds only -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+            <certificates src="system" />
+        </trust-anchors>
+    </debug-overrides>
+
+    <!-- Security: Certificate transparency enforcement -->
+    <certificateTransparency>
+        <enforcement>
+            <domain includeSubdomains="true">api.ledgerpay.com</domain>
+            <domain includeSubdomains="true">api.stripe.com</domain>
+        </enforcement>
+    </certificateTransparency>
 </network-security-config>

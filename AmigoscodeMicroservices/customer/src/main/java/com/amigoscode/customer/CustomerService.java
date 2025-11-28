@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -20,6 +21,7 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final FraudClient fraudClient;
     private final RabbitMQMessageProducer rabbitMQMessageProducer;
+    private final PasswordEncoder passwordEncoder;
     private final MeterRegistry meterRegistry;
 
     // Monitoring: Performance timers
@@ -69,6 +71,7 @@ public class CustomerService {
                         .firstName(request.firstName())
                         .lastName(request.lastName())
                         .email(request.email())
+                        .password(passwordEncoder.encode(request.password()))
                         .build();
 
                 customer = customerRepository.saveAndFlush(customer);

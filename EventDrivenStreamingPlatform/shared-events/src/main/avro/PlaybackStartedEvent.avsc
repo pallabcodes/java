@@ -1,0 +1,97 @@
+{
+  "type": "record",
+  "name": "PlaybackStartedEvent",
+  "namespace": "com.netflix.streaming.events",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string",
+      "doc": "Unique identifier for this event"
+    },
+    {
+      "name": "eventType",
+      "type": "string",
+      "doc": "Type of the event"
+    },
+    {
+      "name": "timestamp",
+      "type": "long",
+      "doc": "Event timestamp in milliseconds"
+    },
+    {
+      "name": "correlationId",
+      "type": "string",
+      "doc": "Correlation ID for tracing"
+    },
+    {
+      "name": "causationId",
+      "type": "string",
+      "doc": "Causation ID for event linking"
+    },
+    {
+      "name": "schemaVersion",
+      "type": "string",
+      "doc": "Schema version for evolution"
+    },
+    {
+      "name": "tenantId",
+      "type": "string",
+      "doc": "Tenant identifier"
+    },
+    {
+      "name": "sessionId",
+      "type": "string",
+      "doc": "Unique session identifier"
+    },
+    {
+      "name": "userId",
+      "type": "string",
+      "doc": "User who started playback"
+    },
+    {
+      "name": "contentId",
+      "type": "string",
+      "doc": "Content being played"
+    },
+    {
+      "name": "contentType",
+      "type": "string",
+      "doc": "Type of content (MOVIE, EPISODE, etc.)"
+    },
+    {
+      "name": "deviceType",
+      "type": "string",
+      "doc": "Device type (MOBILE, DESKTOP, TV, etc.)"
+    },
+    {
+      "name": "quality",
+      "type": "string",
+      "doc": "Video quality (720p, 1080p, 4K, etc.)"
+    },
+    {
+      "name": "clientVersion",
+      "type": "string",
+      "doc": "Client application version"
+    },
+    {
+      "name": "region",
+      "type": "string",
+      "doc": "Geographic region of the user"
+    },
+    {
+      "name": "networkType",
+      "type": "string",
+      "doc": "Network type (WIFI, CELLULAR, ETHERNET)"
+    },
+    {
+      "name": "cdnNode",
+      "type": "string",
+      "doc": "CDN node serving the content"
+    },
+    {
+      "name": "startPosition",
+      "type": "long",
+      "doc": "Playback start position in milliseconds"
+    }
+  ]
+}

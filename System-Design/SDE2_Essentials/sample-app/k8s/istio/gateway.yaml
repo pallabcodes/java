@@ -1,0 +1,57 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: sde2-essentials-gateway
+  namespace: sde2-essentials
+  labels:
+    app: sde2-essentials
+    version: v1
+spec:
+  selector:
+    istio: ingressgateway # use Istio default gateway implementation
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "sde2-essentials.example.com"
+    - "*.sde2-essentials.example.com"
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: sde2-essentials-tls
+    hosts:
+    - "sde2-essentials.example.com"
+    - "*.sde2-essentials.example.com"
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: sde2-essentials-grpc-gateway
+  namespace: sde2-essentials
+  labels:
+    app: sde2-essentials
+    version: v1
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 9090
+      name: grpc
+      protocol: GRPC
+    hosts:
+    - "grpc.sde2-essentials.example.com"
+  - port:
+      number: 9443
+      name: grpc-ssl
+      protocol: GRPC
+    tls:
+      mode: SIMPLE
+      credentialName: sde2-essentials-tls
+    hosts:
+    - "grpc.sde2-essentials.example.com"

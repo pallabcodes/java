@@ -1,0 +1,110 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: sde2-essentials-virtual-service
+  namespace: sde2-essentials
+  labels:
+    app: sde2-essentials
+    version: v1
+spec:
+  hosts:
+  - "sde2-essentials.example.com"
+  gateways:
+  - sde2-essentials-gateway
+  http:
+  - name: "primary-routes"
+    match:
+    - uri:
+        prefix: "/api"
+    - uri:
+        prefix: "/actuator"
+    route:
+    - destination:
+        host: sde2-essentials-app
+        port:
+          number: 8080
+    timeout: 30s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+      retryOn: "gateway-error,connect-failure,refused-stream"
+    corsPolicy:
+      allowOrigins:
+      - exact: "https://sde2-essentials.example.com"
+      - exact: "https://app.sde2-essentials.example.com"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "Authorization"
+      - "Content-Type"
+      - "X-Requested-With"
+      - "X-Correlation-Id"
+      allowCredentials: true
+      maxAge: "86400s"
+
+  - name: "health-checks"
+    match:
+    - uri:
+        exact: "/health"
+      method: GET
+    - uri:
+        exact: "/health/live"
+      method: GET
+    - uri:
+        exact: "/health/ready"
+      method: GET
+    route:
+    - destination:
+        host: sde2-essentials-app
+        port:
+          number: 8080
+    timeout: 5s
+
+  - name: "redirect-to-https"
+    match:
+    - scheme: http
+    redirect:
+      scheme: https
+      authority: sde2-essentials.example.com
+      redirectCode: 301
+
+  - name: "default-route"
+    route:
+    - destination:
+        host: sde2-essentials-app
+        port:
+          number: 8080
+    timeout: 30s
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: sde2-essentials-grpc-virtual-service
+  namespace: sde2-essentials
+  labels:
+    app: sde2-essentials
+    version: v1
+spec:
+  hosts:
+  - "grpc.sde2-essentials.example.com"
+  gateways:
+  - sde2-essentials-grpc-gateway
+  grpc:
+  - name: "grpc-routes"
+    match:
+    - method:
+        name: "GetAccount"
+    route:
+    - destination:
+        host: sde2-essentials-app
+        port:
+          number: 9090
+    timeout: 30s
+    retries:
+      attempts: 2
+      perTryTimeout: 15s
+      retryOn: "unavailable,deadline-exceeded"

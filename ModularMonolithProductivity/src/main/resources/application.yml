@@ -5,9 +5,9 @@ spring:
   application:
     name: modular-monolith-productivity
   datasource:
-    url: jdbc:postgresql://localhost:5432/productivity
-    username: user
-    password: pass
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/productivity}
+    username: ${DB_USERNAME:user}
+    password: ${DB_PASSWORD:pass}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -15,14 +15,38 @@ spring:
       hibernate:
         format_sql: true
 
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:netflix-modular-monolith-jwt-secret-key}
+  access-token-expiry: ${JWT_ACCESS_TOKEN_EXPIRY:3600000}
+  refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:86400000}
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: modular-monolith-productivity
+      environment: dev
+      version: 1.0.0
 
 logging:
   level:
     root: INFO
     com.netflix.productivity: DEBUG
+    org.springframework.security: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{correlationId}] %-5level %logger{36} - %msg%n"
+    file:
+      name: logs/${spring.application.name}.log
+      max-size: 10MB
+      max-history: 30
 

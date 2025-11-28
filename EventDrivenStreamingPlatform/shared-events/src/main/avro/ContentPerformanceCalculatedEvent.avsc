@@ -1,0 +1,134 @@
+{
+  "type": "record",
+  "name": "ContentPerformanceCalculatedEvent",
+  "namespace": "com.netflix.streaming.events",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string",
+      "doc": "Unique identifier for this event"
+    },
+    {
+      "name": "eventType",
+      "type": "string",
+      "doc": "Type of the event"
+    },
+    {
+      "name": "timestamp",
+      "type": "long",
+      "doc": "Event timestamp in milliseconds"
+    },
+    {
+      "name": "correlationId",
+      "type": "string",
+      "doc": "Correlation ID for tracing"
+    },
+    {
+      "name": "causationId",
+      "type": "string",
+      "doc": "Causation ID for event linking"
+    },
+    {
+      "name": "schemaVersion",
+      "type": "string",
+      "doc": "Schema version for evolution"
+    },
+    {
+      "name": "tenantId",
+      "type": "string",
+      "doc": "Tenant identifier"
+    },
+    {
+      "name": "contentId",
+      "type": "string",
+      "doc": "Content identifier"
+    },
+    {
+      "name": "contentType",
+      "type": "string",
+      "doc": "Type of content"
+    },
+    {
+      "name": "timeWindow",
+      "type": "string",
+      "doc": "Time window (HOURLY, DAILY, WEEKLY)"
+    },
+    {
+      "name": "windowStart",
+      "type": "long",
+      "doc": "Window start timestamp"
+    },
+    {
+      "name": "windowEnd",
+      "type": "long",
+      "doc": "Window end timestamp"
+    },
+    {
+      "name": "uniqueViewers",
+      "type": "long",
+      "doc": "Number of unique viewers"
+    },
+    {
+      "name": "totalSessions",
+      "type": "long",
+      "doc": "Total viewing sessions"
+    },
+    {
+      "name": "totalWatchTime",
+      "type": "long",
+      "doc": "Total watch time in milliseconds"
+    },
+    {
+      "name": "avgCompletionPercentage",
+      "type": "double",
+      "doc": "Average completion percentage"
+    },
+    {
+      "name": "completedViews",
+      "type": "long",
+      "doc": "Number of completed viewings"
+    },
+    {
+      "name": "avgBufferingTime",
+      "type": "long",
+      "doc": "Average buffering time per session"
+    },
+    {
+      "name": "qualityDistribution",
+      "type": {
+        "type": "map",
+        "values": "long"
+      },
+      "doc": "Quality distribution (quality -> count)"
+    },
+    {
+      "name": "deviceDistribution",
+      "type": {
+        "type": "map",
+        "values": "long"
+      },
+      "doc": "Device distribution (device -> count)"
+    },
+    {
+      "name": "geographicDistribution",
+      "type": {
+        "type": "map",
+        "values": "long"
+      },
+      "doc": "Geographic distribution (region -> count)"
+    },
+    {
+      "name": "dropOffPoints",
+      "type": {
+        "type": "map",
+        "values": "long"
+      },
+      "doc": "Drop-off points (position -> count)"
+    },
+    {
+      "name": "engagementScore",
+      "type": "double",
+      "doc": "Content engagement score (0-100)"
+    }
+  ]
+}

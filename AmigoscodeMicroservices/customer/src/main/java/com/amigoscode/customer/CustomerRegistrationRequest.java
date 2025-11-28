@@ -19,7 +19,11 @@ public record CustomerRegistrationRequest(
         @NotBlank(message = "Email is required")
         @Email(message = "Email must be valid")
         @Size(max = 100, message = "Email must not exceed 100 characters")
-        String email
+        String email,
+
+        @NotBlank(message = "Password is required")
+        @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters")
+        String password
 ) {
 
     /**
@@ -29,6 +33,7 @@ public record CustomerRegistrationRequest(
         firstName = sanitizeInput(firstName);
         lastName = sanitizeInput(lastName);
         email = sanitizeEmail(email);
+        // Password is not sanitized as it should contain special characters
     }
 
     private static String sanitizeInput(String input) {

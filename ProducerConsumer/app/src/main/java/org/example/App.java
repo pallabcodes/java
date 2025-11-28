@@ -2,8 +2,12 @@ package org.example;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.validation.annotation.Validated;
 
 @SpringBootApplication
+@EnableAsync
+@Validated
 public class App {
 
     public static void main(String[] args) {

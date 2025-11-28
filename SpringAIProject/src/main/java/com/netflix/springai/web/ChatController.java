@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import io.micrometer.core.annotation.Timed;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,10 +27,13 @@ public class ChatController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('AI_USER') or hasRole('ADMIN')")
     @Timed(value = "chat.request", description = "Latency for chat endpoint")
     @Operation(summary = "Chat with model", description = "Returns assistant message content for given input")
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "400", description = "Validation error")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @ApiResponse(responseCode = "403", description = "Forbidden")
     public ResponseEntity<String> chat(@Valid @RequestBody ChatRequest request) {
         return ResponseEntity.ok(springAiService.chat(request.input()));
     }

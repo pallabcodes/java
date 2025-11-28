@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import io.micrometer.core.annotation.Timed;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,10 +29,13 @@ public class EmbeddingController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('AI_USER') or hasRole('ADMIN')")
     @Timed(value = "embeddings.request", description = "Latency for embeddings endpoint")
     @Operation(summary = "Generate embeddings", description = "Returns vector for provided text")
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "400", description = "Validation error")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @ApiResponse(responseCode = "403", description = "Forbidden")
     public ResponseEntity<List<Double>> embed(@Valid @RequestBody EmbeddingRequest request) {
         return ResponseEntity.ok(springAiService.embed(request.text()));
     }

@@ -1,0 +1,144 @@
+# Event-Driven Video Streaming Analytics Platform - ML Pipeline Service
+# Saga-Based ML Feature Pipeline with Distributed Transaction Orchestration
+
+server:
+  port: 8084
+
+spring:
+  application:
+    name: ml-pipeline-service
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:ml_pipeline}
+    username: ${DB_USERNAME:ml_user}
+    password: ${DB_PASSWORD:ml_password}
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 20000
+
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+# Temporal Configuration for Saga Orchestration
+temporal:
+  service:
+    address: ${TEMPORAL_ADDRESS:localhost:7233}
+  namespace: ${TEMPORAL_NAMESPACE:default}
+  task-queue:
+    ml-pipeline: ml-pipeline-task-queue
+
+# ML Pipeline Configuration
+ml:
+  pipeline:
+    timeout:
+      feature-engineering: ${FEATURE_ENG_TIMEOUT:1800000}  # 30 minutes
+      model-training: ${MODEL_TRAINING_TIMEOUT:86400000}   # 24 hours
+      model-deployment: ${MODEL_DEPLOY_TIMEOUT:3600000}    # 1 hour
+
+    retry:
+      max-attempts: ${MAX_RETRY_ATTEMPTS:3}
+      initial-interval: ${RETRY_INITIAL_INTERVAL:5000}     # 5 seconds
+      multiplier: ${RETRY_MULTIPLIER:2.0}
+
+  feature-store:
+    redis-prefix: ${FEATURE_STORE_PREFIX:ml:features:}
+    ttl-hours: ${FEATURE_TTL_HOURS:168}  # 7 days
+
+  model-store:
+    path: ${MODEL_STORE_PATH:/tmp/ml-models}
+    s3-bucket: ${MODEL_S3_BUCKET:netflix-ml-models}
+
+# OpenTelemetry Configuration
+opentelemetry:
+  service:
+    name: ml-pipeline-service
+    version: 1.0.0
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+
+# Management & Observability
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,temporal
+      base-path: /actuator
+
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      service: ml-pipeline-service
+      component: saga-orchestrator
+
+# Logging Configuration
+logging:
+  level:
+    com.netflix.streaming.ml: ${LOG_LEVEL:INFO}
+    io.temporal: WARN
+    org.springframework.kafka: WARN
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg%n"
+    correlation: "[%X{correlationId:-}] [%X{tenantId:-}] [%X{userId:-}]"
+
+# Resilience Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      ml-pipeline-orchestration:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 30000
+        failureRateThreshold: 50
+
+  retry:
+    instances:
+      ml-activity-execution:
+        max-attempts: 3
+        waitDuration: 1000
+        retry-exceptions:
+          - java.net.ConnectException
+          - io.temporal.client.WorkflowServiceException
+
+# Test profile configuration
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: jdbc:tc:postgresql:15-alpine:///testdb
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+
+logging:
+  level:
+    com.netflix.streaming.ml: DEBUG
+    io.temporal: INFO

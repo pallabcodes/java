@@ -1,0 +1,109 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: sde2-essentials-destination-rule
+  namespace: sde2-essentials
+  labels:
+    app: sde2-essentials
+    version: v1
+spec:
+  host: sde2-essentials-app
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30s
+        tcpKeepalive:
+          time: 7200s
+          interval: 60s
+      http:
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        idleTimeout: 60s
+        h2UpgradePolicy: UPGRADE
+    outlierDetection:
+      consecutive5xxErrors: 3
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+    tls:
+      mode: ISTIO_MUTUAL
+    loadBalancer:
+      simple: ROUND_ROBIN
+      consistentHash:
+        httpHeaderName: "X-Correlation-Id"
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+    trafficPolicy:
+      loadBalancer:
+        simple: ROUND_ROBIN
+  - name: v2
+    labels:
+      version: v2
+    trafficPolicy:
+      loadBalancer:
+        simple: ROUND_ROBIN
+---
+apiVersion: networking.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: sde2-essentials-peer-authentication
+  namespace: sde2-essentials
+  labels:
+    app: sde2-essentials
+    version: v1
+spec:
+  selector:
+    matchLabels:
+      app: sde2-essentials
+  mtls:
+    mode: STRICT
+---
+apiVersion: networking.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: sde2-essentials-request-authentication
+  namespace: sde2-essentials
+  labels:
+    app: sde2-essentials
+    version: v1
+spec:
+  selector:
+    matchLabels:
+      app: sde2-essentials
+  jwtRules:
+  - issuer: "http://keycloak.sde2-essentials.svc.cluster.local:8080/realms/sde2-essentials"
+    jwksUri: "http://keycloak.sde2-essentials.svc.cluster.local:8080/realms/sde2-essentials/protocol/openid-connect/certs"
+    forwardOriginalToken: true
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: sde2-essentials-authorization-policy
+  namespace: sde2-essentials
+  labels:
+    app: sde2-essentials
+    version: v1
+spec:
+  selector:
+    matchLabels:
+      app: sde2-essentials
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        requestPrincipals: ["*"]
+    to:
+    - operation:
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        paths: ["/api/*"]
+    when:
+    - key: request.auth.claims[realm_access][roles]
+      values: ["accounts:read", "accounts:write"]
+  - to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/actuator/health", "/health*"]

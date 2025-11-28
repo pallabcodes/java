@@ -17,6 +17,17 @@ spring:
         show-sql: true
     zipkin:
         base-url: http://localhost:9411
+    sleuth:
+        otel:
+            exporter:
+                jaeger:
+                    endpoint: http://localhost:14268/api/traces
+    security:
+        oauth2:
+            resourceserver:
+                jwt:
+                    issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/amigoscode}
+                    jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/amigoscode/protocol/openid-connect/certs}
     rabbitmq:
         addresses: localhost:5672
     profiles:
@@ -29,7 +40,7 @@ eureka:
         register-with-eureka: true
         enabled: true
 
-# Security Configuration
+# Application Security Configuration
 app:
   security:
     cors:
@@ -37,9 +48,6 @@ app:
       allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
       allowed-headers: "Authorization,Content-Type,Accept,X-Requested-With"
       allow-credentials: true
-    jwt:
-      secret: "${JWT_SECRET:customer-service-jwt-secret-key-change-in-production}"
-      expiration: 86400000  # 24 hours in milliseconds
     rate-limiting:
       enabled: true
       requests-per-minute: 60
@@ -47,6 +55,10 @@ app:
       max-string-length: 1000
       max-array-size: 100
       max-depth: 5
+    audit:
+      enabled: true
+      log-level: INFO
+      include-sensitive-data: false
 
 # Logging Configuration
 # Monitoring and Observability

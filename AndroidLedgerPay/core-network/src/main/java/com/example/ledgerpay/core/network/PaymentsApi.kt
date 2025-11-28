@@ -46,7 +46,38 @@ data class CreateIntentResponse(
     }
 }
 
+// Security: Authentication request/response validation
+data class LoginRequest(
+    val email: String,
+    val password: String
+) {
+    init {
+        // Security: Input validation for login
+        require(email.isNotBlank()) { "Email is required" }
+        require(email.matches(Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"))) { "Invalid email format" }
+        require(password.isNotBlank()) { "Password is required" }
+        require(password.length >= 8) { "Password must be at least 8 characters" }
+    }
+}
+
+data class LoginResponse(
+    val userId: String,
+    val email: String,
+    val token: String
+) {
+    init {
+        // Security: Validate response data
+        require(userId.isNotBlank()) { "User ID cannot be blank" }
+        require(email.isNotBlank()) { "Email cannot be blank" }
+        require(token.isNotBlank()) { "Token cannot be blank" }
+        require(token.length >= 10) { "Token appears invalid" }
+    }
+}
+
 interface PaymentsApi {
     @POST("/payment_intents")
     suspend fun createIntent(@Body req: CreateIntentRequest): CreateIntentResponse
+
+    @POST("/api/auth/login")
+    suspend fun login(@Body req: LoginRequest): LoginResponse
 }

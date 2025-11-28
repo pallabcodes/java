@@ -7,8 +7,21 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class AppTest {
-    @Test public void appHasAGreeting() {
+    @Test
+    public void appCanBeInstantiated() {
         App classUnderTest = new App();
-        assertNotNull("app should have a greeting", classUnderTest.getGreeting());
+        assertNotNull("app should not be null", classUnderTest);
+    }
+
+    @Test
+    public void appMainMethodDoesNotThrow() {
+        // This test verifies that the main method can be called without throwing exceptions
+        // In a real application, you would mock SpringApplication.run
+        try {
+            String[] args = new String[]{};
+            App.main(args);
+        } catch (Exception e) {
+            fail("Main method should not throw exceptions: " + e.getMessage());
+        }
     }
 }

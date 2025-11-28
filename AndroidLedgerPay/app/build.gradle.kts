@@ -11,7 +11,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    kotlinOptions {
+        jvmTarget = "17"
+        // Performance optimizations
+        freeCompilerArgs += listOf(
+            "-Xopt-in=kotlin.RequiresOptIn",
+            "-Xjvm-default=all",
+            "-Xinline-classes"
+        )
+    }
     namespace = "com.example.ledgerpay"
     compileSdk = 34
     defaultConfig {
@@ -22,17 +30,67 @@ android {
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+
+        // Performance: Increase heap size for builds
+        javaCompileOptions.annotationProcessorOptions.arguments += mapOf(
+            "room.incremental" to "true"
+        )
     }
+
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+
+            // Performance: Enable R8 full mode
+            optimization {
+                isShrinkResources = true
+            }
+
+            buildConfigField("boolean", "PERFORMANCE_MONITORING_ENABLED", "false")
+            buildConfigField("boolean", "DEBUG_NETWORK_ENABLED", "false")
         }
-        debug { isMinifyEnabled = false }
+        debug {
+            isMinifyEnabled = false
+            isShrinkResources = false
+
+            buildConfigField("boolean", "PERFORMANCE_MONITORING_ENABLED", "true")
+            buildConfigField("boolean", "DEBUG_NETWORK_ENABLED", "true")
+        }
     }
-    buildFeatures { compose = true }
-    composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
-    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.14"
+    }
+
+    packaging {
+        resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        // Performance: Exclude unnecessary resources
+        resources.excludes += listOf(
+            "META-INF/DEPENDENCIES",
+            "META-INF/LICENSE",
+            "META-INF/LICENSE.txt",
+            "META-INF/license.txt",
+            "META-INF/NOTICE",
+            "META-INF/NOTICE.txt",
+            "META-INF/notice.txt",
+            "META-INF/ASL2.0",
+            "META-INF/*.kotlin_module"
+        )
+    }
+
+    // Performance: Optimize dexing
+    dexOptions {
+        maxProcessCount = Runtime.getRuntime().availableProcessors()
+        javaMaxHeapSize = "4g"
+        preDexLibraries = true
+    }
 }
 
 dependencies {
