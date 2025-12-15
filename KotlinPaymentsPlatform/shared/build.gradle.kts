@@ -27,5 +27,26 @@ dependencies {
 
     // Spring Boot Starter for easier dependency management
     api("org.springframework.boot:spring-boot-starter")
+    
+    // Resilience4j for circuit breakers and retries
+    api("io.github.resilience4j:resilience4j-spring-boot3:2.1.0")
+    api("io.github.resilience4j:resilience4j-circuitbreaker:2.1.0")
+    api("io.github.resilience4j:resilience4j-retry:2.1.0")
+    api("io.github.resilience4j:resilience4j-timelimiter:2.1.0")
+    
+    // Bucket4j for rate limiting
+    api("com.bucket4j:bucket4j-core:8.10.1")
+    
+    // Spring Web for filters
+    api("org.springframework.boot:spring-boot-starter-web")
+    
+    // Redis for idempotency and distributed locking
+    api("org.springframework.boot:spring-boot-starter-data-redis")
+    
+    // AspectJ for distributed locking aspect
+    api("org.springframework.boot:spring-boot-starter-aop")
+    
+    // Micrometer for metrics
+    api("io.micrometer:micrometer-core")
 }
 

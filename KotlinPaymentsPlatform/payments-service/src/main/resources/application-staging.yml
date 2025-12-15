@@ -1,0 +1,64 @@
+# Staging Environment Configuration
+# Kotlin Payments Platform
+
+spring:
+  profiles:
+    active: staging
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:staging-db.example.com}:${DB_PORT:5432}/${DB_NAME:payments_service_staging}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+
+  data:
+    redis:
+      host: ${REDIS_HOST:staging-redis.example.com}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiry: ${JWT_ACCESS_TOKEN_EXPIRY:3600000}
+  refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:86400000}
+
+# Application Configuration
+app:
+  backpressure:
+    enabled: true
+    max-concurrent-requests: 100
+    max-queue-size: 50
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.example.kotlinpay: INFO
+
+# Management
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+# Resilience (Production-like)
+resilience4j:
+  circuitbreaker:
+    instances:
+      payment-gateway:
+        waitDurationInOpenState: 10000
+        failureRateThreshold: 50
+
+# OpenTelemetry
+opentelemetry:
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://staging-otel-collector.example.com:4317}
+

@@ -1,0 +1,208 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_OPTS: '-Dmaven.repo.local=.m2/repository'
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: streaming_platform_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      kafka:
+        image: confluentinc/cp-kafka:7.4.0
+        env:
+          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+        ports:
+          - 9092:9092
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: |
+          mvn clean install -DskipTests
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: streaming_platform_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+
+      - name: Run tests
+        run: |
+          mvn test
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: streaming_platform_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/target/surefire-reports/*.xml'
+          retention-days: 30
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'EventDrivenStreamingPlatform'
+          path: '.'
+          format: 'HTML'
+          args: >
+            --failOnCVSS 7
+            --enableRetired
+
+      - name: Upload dependency check report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: reports/dependency-check-report.html
+
+  docker-build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [build]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push infrastructure service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./infrastructure
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ secrets.REGISTRY_URL }}/streaming-platform/infrastructure:${{ github.sha }}
+            ${{ secrets.REGISTRY_URL }}/streaming-platform/infrastructure:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push playback service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./playback-service
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ secrets.REGISTRY_URL }}/streaming-platform/playback:${{ github.sha }}
+            ${{ secrets.REGISTRY_URL }}/streaming-platform/playback:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push analytics service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./analytics-service
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ secrets.REGISTRY_URL }}/streaming-platform/analytics:${{ github.sha }}
+            ${{ secrets.REGISTRY_URL }}/streaming-platform/analytics:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push ML pipeline service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ml-pipeline-service
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ secrets.REGISTRY_URL }}/streaming-platform/ml-pipeline:${{ github.sha }}
+            ${{ secrets.REGISTRY_URL }}/streaming-platform/ml-pipeline:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run Checkstyle
+        run: |
+          mvn checkstyle:check
+
+      - name: Run SpotBugs
+        run: |
+          mvn spotbugs:check
+
+      - name: Generate code quality reports
+        run: |
+          mvn site
+
+      - name: Upload code quality reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-reports
+          path: '**/target/site/**'
+

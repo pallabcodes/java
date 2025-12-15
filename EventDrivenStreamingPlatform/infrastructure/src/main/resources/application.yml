@@ -3,6 +3,13 @@
 
 server:
   port: 8081
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 1024
+  tomcat:
+    max-http-post-size: 2MB
+    max-http-form-post-size: 2MB
 
 spring:
   application:
@@ -43,6 +50,19 @@ spring:
     baseline-on-migrate: true
     validate-on-migrate: true
 
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 10
+          min-idle: 2
+
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     schema-registry-url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
@@ -81,6 +101,13 @@ app:
   schema-registry:
     url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
     auto-register-schemas: ${AUTO_REGISTER_SCHEMAS:true}
+
+  # Backpressure Configuration
+  backpressure:
+    enabled: true
+    max-concurrent-requests: 100
+    max-queue-size: 50
+    retry-after-seconds: 60
 
 # OpenTelemetry Configuration
 opentelemetry:
@@ -169,6 +196,11 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:9092
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
 opentelemetry:
   exporter:

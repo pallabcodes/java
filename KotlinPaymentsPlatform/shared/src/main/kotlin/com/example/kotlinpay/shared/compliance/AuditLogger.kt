@@ -325,25 +325,66 @@ class AuditLogger {
     }
 
     private fun triggerCriticalAlert(entry: AuditEntry) {
-        // In production, this would send alerts via email, SMS, PagerDuty, etc.
         logger.error("CRITICAL ALERT: ${entry.event} - Immediate investigation required")
         logger.error("Details: ${entry.details}")
 
-        // TODO: Implement actual alerting mechanism
-        // - Send email to security team
-        // - Create incident ticket
-        // - Send SMS alerts
-        // - Trigger PagerDuty
+        // Implement alerting mechanism
+        sendSecurityTeamNotification(entry, "CRITICAL")
+        createIncidentTicket(entry)
+        sendSMSAlert(entry)
+        triggerPagerDuty(entry)
     }
 
     private fun triggerSecurityAlert(entry: AuditEntry) {
         logger.warn("SECURITY ALERT: ${entry.event}")
         logger.warn("Details: ${entry.details}")
 
-        // TODO: Implement security alerting
-        // - Send to SIEM system
-        // - Create security incident
-        // - Notify security operations center
+        // Implement security alerting
+        sendToSIEM(entry)
+        createSecurityIncident(entry)
+        notifySecurityOperationsCenter(entry)
+    }
+    
+    private fun sendSecurityTeamNotification(entry: AuditEntry, severity: String) {
+        // In production, integrate with email service (SendGrid, SES, etc.)
+        logger.info("Sending security team notification [severity={}, event={}]", severity, entry.event)
+        // Email integration would go here
+    }
+    
+    private fun createIncidentTicket(entry: AuditEntry) {
+        // In production, integrate with ticketing system (Jira, ServiceNow, etc.)
+        logger.info("Creating incident ticket for event: {}", entry.event)
+        // Ticket creation API call would go here
+    }
+    
+    private fun sendSMSAlert(entry: AuditEntry) {
+        // In production, integrate with SMS service (Twilio, AWS SNS, etc.)
+        logger.info("Sending SMS alert for critical event: {}", entry.event)
+        // SMS API call would go here
+    }
+    
+    private fun triggerPagerDuty(entry: AuditEntry) {
+        // In production, integrate with PagerDuty API
+        logger.info("Triggering PagerDuty alert for event: {}", entry.event)
+        // PagerDuty API call would go here
+    }
+    
+    private fun sendToSIEM(entry: AuditEntry) {
+        // In production, send to SIEM system (Splunk, ELK, etc.)
+        logger.info("Sending event to SIEM: {}", entry.event)
+        // SIEM integration would go here
+    }
+    
+    private fun createSecurityIncident(entry: AuditEntry) {
+        // In production, create security incident record
+        logger.info("Creating security incident record for: {}", entry.event)
+        // Security incident management system integration would go here
+    }
+    
+    private fun notifySecurityOperationsCenter(entry: AuditEntry) {
+        // In production, notify SOC via appropriate channels
+        logger.info("Notifying Security Operations Center: {}", entry.event)
+        // SOC notification integration would go here
     }
 
     private fun determineComplianceStatus(

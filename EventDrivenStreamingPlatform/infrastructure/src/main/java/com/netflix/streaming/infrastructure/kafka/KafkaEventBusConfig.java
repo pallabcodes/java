@@ -157,11 +157,43 @@ public class KafkaEventBusConfig {
     }
 
     /**
+     * Kafka Template for DLQ (uses Object for flexibility)
+     */
+    @Bean
+    public KafkaTemplate<String, Object> dlqKafkaTemplate() {
+        Map<String, Object> configProps = new HashMap<>();
+        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        configProps.put(ProducerConfig.ACKS_CONFIG, "all");
+        configProps.put(ProducerConfig.RETRIES_CONFIG, 3);
+        configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+        
+        return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(configProps));
+    }
+
+    /**
      * Event Publisher implementation using Kafka
      */
     @Bean
     public EventPublisher kafkaEventPublisher(KafkaTemplate<String, BaseEvent> kafkaTemplate) {
         return new KafkaEventPublisher(kafkaTemplate, tracer, propagator);
+    }
+
+    /**
+     * Kafka Template for DLQ (uses Object for flexibility)
+     */
+    @Bean
+    public KafkaTemplate<String, Object> dlqKafkaTemplate() {
+        Map<String, Object> configProps = new HashMap<>();
+        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        configProps.put(ProducerConfig.ACKS_CONFIG, "all");
+        configProps.put(ProducerConfig.RETRIES_CONFIG, 3);
+        configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+        
+        return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(configProps));
     }
 
     /**
@@ -204,16 +236,27 @@ public class KafkaEventBusConfig {
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
 
         // Error handling with retry and DLQ
+        // Note: KafkaErrorHandler is injected and provides DLQ functionality
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(
             (consumerRecord, exception) -> {
                 logger.error("Error processing event: {}", consumerRecord.value(), exception);
-                // Could send to DLQ topic here
+                // DLQ handling is done by KafkaErrorHandler
             },
             new ExponentialBackOffPolicy()
         );
 
         // Don't retry certain exceptions
         errorHandler.addNotRetryableExceptions(IllegalArgumentException.class);
+        errorHandler.addNotRetryableExceptions(
+            org.apache.kafka.common.errors.RecordTooLargeException.class,
+            org.apache.kafka.common.errors.SerializationException.class
+        );
+
+        // Add retryable exceptions
+        errorHandler.addRetryableExceptions(
+            org.springframework.kafka.KafkaException.class,
+            java.net.SocketTimeoutException.class
+        );
 
         factory.setCommonErrorHandler(errorHandler);
 

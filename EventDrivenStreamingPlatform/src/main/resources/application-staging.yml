@@ -1,0 +1,95 @@
+# Staging Environment Configuration
+# Event-Driven Streaming Platform
+
+spring:
+  profiles:
+    active: staging
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:staging-db.example.com}:${DB_PORT:5432}/${DB_NAME:event_store_staging}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      leak-detection-threshold: 60000
+
+  data:
+    redis:
+      host: ${REDIS_HOST:staging-redis.example.com}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 10
+          min-idle: 2
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:staging-kafka.example.com:9092}
+    producer:
+      acks: all
+      retries: 3
+      enable-idempotence: true
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+
+# Application Configuration
+app:
+  kafka:
+    event-bus:
+      retention-hours: 168
+      partitions: 6
+      replication-factor: 2
+
+  backpressure:
+    enabled: true
+    max-concurrent-requests: 100
+    max-queue-size: 50
+    retry-after-seconds: 60
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.netflix.streaming: INFO
+    org.springframework.kafka: WARN
+    org.hibernate.SQL: WARN
+
+# Management
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# Resilience (Production-like)
+resilience4j:
+  circuitbreaker:
+    instances:
+      event-publishing:
+        waitDurationInOpenState: 10000
+        failureRateThreshold: 50
+  retry:
+    instances:
+      event-publishing:
+        max-attempts: 3
+
+# Security
+spring.security:
+  enabled: true
+
+# OpenTelemetry
+opentelemetry:
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://staging-otel-collector.example.com:4317}
+
