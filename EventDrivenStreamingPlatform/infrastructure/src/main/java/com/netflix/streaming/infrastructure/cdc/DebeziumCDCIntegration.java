@@ -10,6 +10,8 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 /**
@@ -173,17 +175,139 @@ public class DebeziumCDCIntegration {
     private void processDebeziumChange(String tableName, String operation,
                                       String primaryKey, Map<String, Object> before,
                                       Map<String, Object> after) {
-        // Convert Debezium change to domain event
-        // This would typically involve:
-        // 1. Determining event type based on table and operation
-        // 2. Creating domain event with change data
-        // 3. Publishing via event publisher
 
         logger.info("Processing Debezium change: table={}, operation={}, key={}",
             tableName, operation, primaryKey);
 
-        // Integration with ChangeDataCaptureService or direct event publishing
-        // This is a placeholder - actual implementation would create domain events
+        try {
+            // Create domain event based on table and operation
+            BaseEvent domainEvent = createDomainEvent(tableName, operation, primaryKey, before, after);
+
+            if (domainEvent != null) {
+                // Publish the domain event
+                cdcService.triggerCdcForTable(tableName, "id", primaryKey);
+
+                logger.debug("Successfully processed Debezium change and triggered CDC for: {}", tableName);
+            } else {
+                logger.warn("No domain event created for Debezium change: table={}, operation={}",
+                    tableName, operation);
+            }
+
+        } catch (Exception e) {
+            logger.error("Failed to create domain event for Debezium change: table={}, operation={}, key={}",
+                tableName, operation, primaryKey, e);
+            throw new RuntimeException("Failed to process Debezium change", e);
+        }
+    }
+
+    /**
+     * Create appropriate domain event based on table and operation.
+     */
+    private BaseEvent createDomainEvent(String tableName, String operation,
+                                       String primaryKey, Map<String, Object> before,
+                                       Map<String, Object> after) {
+
+        // Determine event type based on table and operation
+        String eventType = determineEventType(tableName, operation);
+
+        // Create event data with change information
+        Map<String, Object> eventData = new HashMap<>();
+        eventData.put("tableName", tableName);
+        eventData.put("operation", operation);
+        eventData.put("primaryKey", primaryKey);
+        eventData.put("source", "DEBEZIUM");
+
+        if (operation.equals("INSERT") && after != null) {
+            eventData.put("newData", after);
+        } else if (operation.equals("UPDATE") && before != null && after != null) {
+            eventData.put("oldData", before);
+            eventData.put("newData", after);
+            eventData.put("changedFields", determineChangedFields(before, after));
+        } else if (operation.equals("DELETE") && before != null) {
+            eventData.put("deletedData", before);
+        }
+
+        // For now, return a generic DatabaseChangeEvent
+        // In a real implementation, you would create specific domain events
+        // based on the table type and business logic
+        return new DatabaseChangeEvent(
+            primaryKey,
+            primaryKey,
+            "default",
+            tableName,
+            primaryKey,
+            operation,
+            eventData,
+            java.time.Instant.now()
+        );
+    }
+
+    /**
+     * Determine event type based on table and operation.
+     */
+    private String determineEventType(String tableName, String operation) {
+        // Convert table name to PascalCase and append operation
+        String pascalCase = toPascalCase(tableName);
+        return pascalCase + capitalize(operation) + "Event";
+    }
+
+    /**
+     * Determine which fields changed between before and after states.
+     */
+    private java.util.List<String> determineChangedFields(Map<String, Object> before,
+                                                         Map<String, Object> after) {
+        java.util.List<String> changedFields = new java.util.ArrayList<>();
+
+        if (before == null || after == null) {
+            return changedFields;
+        }
+
+        // Check all keys in both maps
+        java.util.Set<String> allKeys = new java.util.HashSet<>();
+        allKeys.addAll(before.keySet());
+        allKeys.addAll(after.keySet());
+
+        for (String key : allKeys) {
+            Object beforeValue = before.get(key);
+            Object afterValue = after.get(key);
+
+            if (!java.util.Objects.equals(beforeValue, afterValue)) {
+                changedFields.add(key);
+            }
+        }
+
+        return changedFields;
+    }
+
+    /**
+     * Convert snake_case to PascalCase.
+     */
+    private String toPascalCase(String snakeCase) {
+        if (snakeCase == null || snakeCase.isEmpty()) {
+            return snakeCase;
+        }
+
+        String[] parts = snakeCase.toLowerCase().split("_");
+        StringBuilder result = new StringBuilder();
+
+        for (String part : parts) {
+            if (!part.isEmpty()) {
+                result.append(Character.toUpperCase(part.charAt(0)))
+                      .append(part.substring(1));
+            }
+        }
+
+        return result.toString();
+    }
+
+    /**
+     * Capitalize first letter.
+     */
+    private String capitalize(String str) {
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        return Character.toUpperCase(str.charAt(0)) + str.substring(1).toLowerCase();
     }
 }
 

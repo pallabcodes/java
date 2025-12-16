@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "streaming-platform.fullname" . }}-logging-config
+  labels:
+    {{- include "streaming-platform.labels" . | nindent 4 }}
+data:
+  infrastructure-log-level: {{ .Values.infrastructure.env.LOGGING_LEVEL_COM_NETFLIX_STREAMING | default "INFO" | quote }}
+  analytics-log-level: {{ .Values.analytics.env.LOGGING_LEVEL_COM_NETFLIX_STREAMING | default "INFO" | quote }}
+  playback-log-level: {{ .Values.playback.env.LOGGING_LEVEL_COM_NETFLIX_STREAMING | default "INFO" | quote }}
+  ml-log-level: {{ .Values.mlPipeline.env.LOGGING_LEVEL_COM_NETFLIX_STREAMING | default "INFO" | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "streaming-platform.fullname" . }}-app-config
+  labels:
+    {{- include "streaming-platform.labels" . | nindent 4 }}
+data:
+  # Event bus configuration
+  event-retention-hours: "168"
+  event-partitions: "6"
+  event-replication-factor: "3"
+
+  # Outbox configuration
+  outbox-interval-ms: "2000"
+  outbox-batch-size: "100"
+  outbox-max-retries: "3"
+
+  # Circuit breaker configuration
+  circuit-breaker-failure-rate-threshold: "50"
+  circuit-breaker-wait-duration-ms: "60000"
+  circuit-breaker-sliding-window-size: "100"
+
+  # Rate limiting configuration
+  rate-limit-requests-per-second: "100"
+  rate-limit-burst-capacity: "200"
+
+  # Cache configuration
+  user-cache-size: "10000"
+  content-cache-size: "5000"
+  cache-ttl-seconds: "300"
+
+  # Monitoring configuration
+  metrics-ttl: "300"
+  dashboard-update-interval: "1000"
+  max-concurrent-connections: "1000"
+
+  # Performance tuning
+  kafka-batch-size: "16384"
+  kafka-linger-ms: "5"
+  connection-pool-max-active: "20"
+  connection-pool-max-idle: "10"
+
+  # Feature flags
+  enable-circuit-breakers: "true"
+  enable-rate-limiting: "true"
+  enable-caching: "true"
+  enable-metrics: "true"
+  enable-tracing: "true"

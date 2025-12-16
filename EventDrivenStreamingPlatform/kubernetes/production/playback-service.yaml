@@ -1,34 +1,41 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: infrastructure-service
+  name: playback-service
   namespace: streaming-platform
   labels:
-    app: infrastructure-service
-    component: event-infrastructure
-    tier: platform
+    app: playback-service
+    component: playback-engine
+    tier: application
+    version: v1.0.0
 spec:
-  replicas: 2
+  replicas: 3
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
-      app: infrastructure-service
+      app: playback-service
   template:
     metadata:
       labels:
-        app: infrastructure-service
-        component: event-infrastructure
-        tier: platform
+        app: playback-service
+        component: playback-engine
+        tier: application
         version: v1.0.0
     spec:
-      # Service account for accessing Kubernetes resources
       serviceAccountName: streaming-service-account
 
-      # Affinity rules
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: playback-service
+
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -39,14 +46,15 @@ spec:
                 - key: app
                   operator: In
                   values:
-                  - infrastructure-service
+                  - playback-service
               topologyKey: kubernetes.io/hostname
 
       containers:
-      - name: infrastructure
-        image: netflix/streaming/infrastructure-service:v1.0.0
+      - name: playback
+        image: netflix/streaming/playback-service:v1.0.0
+        imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 8081
+        - containerPort: 8082
           name: http
           protocol: TCP
 
@@ -63,44 +71,25 @@ spec:
           valueFrom:
             secretKeyRef:
               name: database-secret
-              key: name
+              key: playback-db-name
         - name: DB_USERNAME
           valueFrom:
             secretKeyRef:
               name: database-secret
-              key: username
+              key: playback-username
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
               name: database-secret
-              key: password
+              key: playback-password
 
         # Kafka configuration
         - name: KAFKA_BOOTSTRAP_SERVERS
           value: "kafka-0.kafka.streaming-platform.svc.cluster.local:9092,kafka-1.kafka.streaming-platform.svc.cluster.local:9092,kafka-2.kafka.streaming-platform.svc.cluster.local:9092"
-        - name: SCHEMA_REGISTRY_URL
-          value: "http://schema-registry.streaming-platform.svc.cluster.local:8081"
-
-        # Redis configuration
-        - name: REDIS_HOST
-          valueFrom:
-            secretKeyRef:
-              name: redis-secret
-              key: host
-        - name: REDIS_PORT
-          valueFrom:
-            secretKeyRef:
-              name: redis-secret
-              key: port
-        - name: REDIS_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: redis-secret
-              key: password
 
         # OpenTelemetry configuration
         - name: OTEL_SERVICE_NAME
-          value: "infrastructure-service"
+          value: "playback-service"
         - name: OTEL_SERVICE_VERSION
           value: "1.0.0"
         - name: OTEL_TRACES_EXPORTER
@@ -116,7 +105,7 @@ spec:
         - name: SPRING_PROFILES_ACTIVE
           value: "kubernetes"
         - name: SERVER_PORT
-          value: "8081"
+          value: "8082"
         - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
           value: "health,info,metrics,prometheus"
         - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
@@ -125,22 +114,23 @@ spec:
           valueFrom:
             configMapKeyRef:
               name: logging-config
-              key: infrastructure-log-level
+              key: playback-log-level
 
-        # Resource limits
+        # Resource limits - optimized for playback workload
         resources:
           limits:
-            memory: 1Gi
-            cpu: "1000m"
+            memory: 1.5Gi
+            cpu: "1500m"
           requests:
-            memory: 512Mi
-            cpu: "500m"
+            memory: 750Mi
+            cpu: "750m"
 
         # Liveness probe
         livenessProbe:
           httpGet:
             path: /actuator/health/liveness
             port: http
+            scheme: HTTP
           initialDelaySeconds: 60
           periodSeconds: 30
           timeoutSeconds: 5
@@ -152,6 +142,7 @@ spec:
           httpGet:
             path: /actuator/health/readiness
             port: http
+            scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
@@ -163,8 +154,9 @@ spec:
           httpGet:
             path: /actuator/health
             port: http
+            scheme: HTTP
           initialDelaySeconds: 10
-          periodSeconds: 5
+          periodSeconds: 10
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 30
@@ -180,65 +172,96 @@ spec:
             drop:
             - ALL
 
-      # Graceful shutdown
-      terminationGracePeriodSeconds: 30
+        volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: logs-volume
+          mountPath: /app/logs
+
+      initContainers:
+      - name: wait-for-db
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z database-service 5432; do echo waiting for database; sleep 2; done;']
+
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}
+      - name: logs-volume
+        emptyDir: {}
+
+      terminationGracePeriodSeconds: 45
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: infrastructure-service
+  name: playback-service
   namespace: streaming-platform
   labels:
-    app: infrastructure-service
-    component: event-infrastructure
-    tier: platform
+    app: playback-service
+    component: playback-engine
+    tier: application
 spec:
   selector:
-    app: infrastructure-service
+    app: playback-service
   ports:
   - name: http
     port: 80
-    targetPort: 8081
+    targetPort: 8082
     protocol: TCP
   type: ClusterIP
 
 ---
-apiVersion: v1
-kind: ServiceAccount
+apiVersion: policy/v1
+kind: PodDisruptionBudget
 metadata:
-  name: streaming-service-account
+  name: playback-service-pdb
   namespace: streaming-platform
-  labels:
-    app: infrastructure-service
-    component: event-infrastructure
-automountServiceAccountToken: false
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: playback-service
 
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
 metadata:
-  name: streaming-service-role
+  name: playback-service-hpa
   namespace: streaming-platform
-rules:
-- apiGroups: [""]
-  resources: ["configmaps", "secrets"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["apps"]
-  resources: ["deployments", "statefulsets"]
-  verbs: ["get", "list", "watch"]
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: streaming-service-rolebinding
-  namespace: streaming-platform
-subjects:
-- kind: ServiceAccount
-  name: streaming-service-account
-  namespace: streaming-platform
-roleRef:
-  kind: Role
-  name: streaming-service-role
-  apiGroup: rbac.authorization.k8s.io
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: playback-service
+  minReplicas: 3
+  maxReplicas: 15
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 20
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+      - type: Pods
+        value: 3
+        periodSeconds: 60

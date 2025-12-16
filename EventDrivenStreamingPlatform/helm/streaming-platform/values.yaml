@@ -1,0 +1,269 @@
+# Default values for streaming-platform Helm chart
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# Infrastructure Service Configuration
+infrastructure:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: netflix/streaming/infrastructure-service
+    tag: "v1.0.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8081
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    SPRING_PROFILES_ACTIVE: "kubernetes"
+    SERVER_PORT: "8081"
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Analytics Service Configuration
+analytics:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: netflix/streaming/analytics-service
+    tag: "v1.0.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8083
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+  env:
+    SPRING_PROFILES_ACTIVE: "kubernetes"
+    SERVER_PORT: "8083"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Playback Service Configuration
+playback:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: netflix/streaming/playback-service
+    tag: "v1.0.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8082
+  resources:
+    limits:
+      cpu: 1500m
+      memory: 1.5Gi
+    requests:
+      cpu: 750m
+      memory: 750Mi
+  env:
+    SPRING_PROFILES_ACTIVE: "kubernetes"
+    SERVER_PORT: "8082"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 15
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ML Pipeline Service Configuration
+mlPipeline:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: netflix/streaming/ml-pipeline-service
+    tag: "v1.0.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8084
+  resources:
+    limits:
+      cpu: 3000m
+      memory: 4Gi
+    requests:
+      cpu: 1500m
+      memory: 2Gi
+  env:
+    SPRING_PROFILES_ACTIVE: "kubernetes"
+    SERVER_PORT: "8084"
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Database Configuration
+postgresql:
+  enabled: true
+  architecture: replication
+  auth:
+    postgresPassword: "changeMe123"
+    username: "streaming"
+    password: "changeMe123"
+    database: "streaming_platform"
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+  readReplicas:
+    persistence:
+      enabled: true
+      size: 50Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+
+# Kafka Configuration
+kafka:
+  enabled: true
+  replicas: 3
+  persistence:
+    enabled: true
+    size: 100Gi
+  zookeeper:
+    persistence:
+      enabled: true
+      size: 20Gi
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 500m
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+
+# Redis Configuration
+redis:
+  enabled: true
+  architecture: replication
+  auth:
+    password: "changeMe123"
+  master:
+    persistence:
+      enabled: true
+      size: 20Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+  replica:
+    replicaCount: 3
+    persistence:
+      enabled: true
+      size: 20Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+    server:
+      persistentVolume:
+        enabled: true
+        size: 50Gi
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+        requests:
+          cpu: 500m
+          memory: 1Gi
+  grafana:
+    enabled: true
+    adminPassword: "admin"
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+# Ingress Configuration
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: streaming-platform.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod Disruption Budgets
+podDisruptionBudget:
+  enabled: true
+
+# Security Context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+
+# Node Selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}

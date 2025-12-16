@@ -1,0 +1,198 @@
+{{- if .Values.analytics.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "streaming-platform.fullname" . }}-analytics
+  labels:
+    {{- include "streaming-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: analytics
+spec:
+  replicas: {{ .Values.analytics.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "streaming-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: analytics
+  template:
+    metadata:
+      labels:
+        {{- include "streaming-platform.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: analytics
+    spec:
+      serviceAccountName: {{ include "streaming-platform.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+      - name: analytics
+        image: {{ include "streaming-platform.image" .Values.analytics.image | quote }}
+        imagePullPolicy: {{ .Values.analytics.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.analytics.service.targetPort }}
+          protocol: TCP
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "{{ .Values.analytics.env.SPRING_PROFILES_ACTIVE }}"
+        - name: SERVER_PORT
+          value: "{{ .Values.analytics.service.targetPort }}"
+        - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+          value: "health,info,metrics,prometheus"
+        - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
+          value: "true"
+        # Database configuration
+        - name: DB_HOST
+          value: "{{ include "streaming-platform.fullname" . }}-postgresql"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "analytics_service"
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "streaming-platform.fullname" . }}-postgresql
+              key: analytics-username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "streaming-platform.fullname" . }}-postgresql
+              key: analytics-password
+        # Redis configuration
+        - name: REDIS_HOST
+          value: "{{ include "streaming-platform.fullname" . }}-redis-master"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "streaming-platform.fullname" . }}-redis
+              key: redis-password
+        # Kafka configuration
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "{{ include "streaming-platform.fullname" . }}-kafka:9092"
+        # OpenTelemetry configuration
+        - name: OTEL_SERVICE_NAME
+          value: "analytics-service"
+        - name: OTEL_SERVICE_VERSION
+          value: "{{ .Chart.AppVersion }}"
+        - name: OTEL_TRACES_EXPORTER
+          value: "otlp"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://{{ include "streaming-platform.fullname" . }}-jaeger-collector:4317"
+        resources:
+          {{- toYaml .Values.analytics.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: logs-volume
+          mountPath: /app/logs
+      initContainers:
+      - name: wait-for-db
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z {{ include "streaming-platform.fullname" . }}-postgresql 5432; do echo waiting for database; sleep 2; done;']
+      - name: wait-for-kafka
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z {{ include "streaming-platform.fullname" . }}-kafka 9092; do echo waiting for kafka; sleep 2; done;']
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}
+      - name: logs-volume
+        emptyDir: {}
+      terminationGracePeriodSeconds: 45
+      {{- with .Values.analytics.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.analytics.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.analytics.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "streaming-platform.fullname" . }}-analytics
+  labels:
+    {{- include "streaming-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: analytics
+spec:
+  type: {{ .Values.analytics.service.type }}
+  ports:
+  - port: {{ .Values.analytics.service.port }}
+    targetPort: {{ .Values.analytics.service.targetPort }}
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "streaming-platform.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: analytics
+---
+{{- if .Values.analytics.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "streaming-platform.fullname" . }}-analytics-hpa
+  labels:
+    {{- include "streaming-platform.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "streaming-platform.fullname" . }}-analytics
+  minReplicas: {{ .Values.analytics.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.analytics.autoscaling.maxReplicas }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.analytics.autoscaling.targetCPUUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.analytics.autoscaling.targetMemoryUtilizationPercentage }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+    scaleUp:
+      stabilizationWindowSeconds: 60
+{{- end }}
+{{- if .Values.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "streaming-platform.fullname" . }}-analytics-pdb
+  labels:
+    {{- include "streaming-platform.labels" . | nindent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      {{- include "streaming-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: analytics
+{{- end }}
+{{- end }}
