@@ -23,6 +23,7 @@
 
     <modules>
         <module>NetflixMathLibrary</module>
+        <module>DesignPatterns</module>
     </modules>
 
     <dependencies>
