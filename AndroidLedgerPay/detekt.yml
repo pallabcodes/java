@@ -13,6 +13,14 @@ build:
   maxIssues: 0
 style:
   MagicNumber:
-    active: false
+    active: true
+    ignoreNumbers: ['-1', '0', '1', '2']
   WildcardImport:
-    active: false
+    active: true
+  MaxLineLength:
+    active: true
+    maxLineLength: 120
+complexity:
+  ComplexMethod:
+    active: true
+    threshold: 15

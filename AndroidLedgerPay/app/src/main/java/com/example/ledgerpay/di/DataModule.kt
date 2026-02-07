@@ -18,7 +18,7 @@ object DataModule {
     @Singleton
     fun provideDb(app: Application): AppDatabase =
         Room.databaseBuilder(app, AppDatabase::class.java, "ledgerpay.db")
-            .fallbackToDestructiveMigration() // TODO: Implement proper migrations
+            // .fallbackToDestructiveMigration() // Disabled for production safety
             .build()
 
     @Provides

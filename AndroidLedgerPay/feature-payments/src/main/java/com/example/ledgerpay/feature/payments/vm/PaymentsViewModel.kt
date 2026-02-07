@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ledgerpay.core.data.PaymentsRepository
 import com.example.ledgerpay.core.data.db.PaymentIntentEntity
-import com.example.ledgerpay.core.data.monitoring.Monitoring
+import com.example.ledgerpay.core.data.telemetry.Monitoring
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

@@ -1,9 +1,8 @@
-
 package com.example.ledgerpay.core.data
 
 import com.example.ledgerpay.core.data.db.PaymentIntentDao
 import com.example.ledgerpay.core.data.db.PaymentIntentEntity
-import com.example.ledgerpay.core.data.monitoring.Monitoring
+import com.example.ledgerpay.core.data.telemetry.Monitoring
 import com.example.ledgerpay.core.network.CreateIntentRequest
 import com.example.ledgerpay.core.network.PaymentsApi
 import kotlinx.coroutines.CoroutineDispatcher

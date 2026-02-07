@@ -1,14 +1,20 @@
 package com.example.ledgerpay.core.data.offline
 
 import android.content.Context
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
 import androidx.room.*
 import androidx.room.Room.databaseBuilder
 import com.example.ledgerpay.core.data.prefs.SecureStorage
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.json.JSONObject
+import java.security.KeyStore
 import java.security.SecureRandom
 import java.util.*
 import javax.crypto.Cipher
@@ -21,7 +27,7 @@ import javax.inject.Singleton
 
 @Singleton
 class OfflineTransactionQueue @Inject constructor(
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     private val secureStorage: SecureStorage
 ) {
 
@@ -30,6 +36,10 @@ class OfflineTransactionQueue @Inject constructor(
         private const val MAX_QUEUE_SIZE = 1000
         private const val ENCRYPTION_KEY_ALIAS = "offline_transaction_key"
         private const val GCM_TAG_LENGTH = 128
+        private const val GCM_IV_LENGTH = 12
+        private const val IV_KEY_AMOUNT = "amount"
+        private const val IV_KEY_RECIPIENT = "recipient"
+        private const val IV_KEY_DESCRIPTION = "description"
     }
 
     private val database: OfflineTransactionDatabase by lazy {
@@ -124,7 +134,9 @@ class OfflineTransactionQueue @Inject constructor(
     }
 
     fun observePendingTransactions(): Flow<List<OfflineTransaction>> {
-        return transactionDao.observePendingTransactions()
+        return transactionDao.observePendingTransactions().map { encrypted ->
+            encrypted.mapNotNull { runCatching { decryptTransaction(it) }.getOrNull() }
+        }
     }
 
     suspend fun updateTransactionStatus(transactionId: String, status: TransactionStatus): Boolean {
@@ -146,6 +158,22 @@ class OfflineTransactionQueue @Inject constructor(
                 updateQueueStatus()
             }
             clearedCount
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    suspend fun incrementRetryCount(transactionId: String, error: String): Boolean {
+        return try {
+            transactionDao.incrementRetryCount(transactionId, error) > 0
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun getFailedTransactionCount(): Int {
+        return try {
+            transactionDao.getFailedTransactionCount()
         } catch (e: Exception) {
             0
         }
@@ -181,29 +209,18 @@ class OfflineTransactionQueue @Inject constructor(
 
     private fun encryptTransaction(transaction: OfflineTransaction): EncryptedOfflineTransaction {
         return try {
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            val iv = ByteArray(12) // GCM IV length
-            SecureRandom().nextBytes(iv)
-            val parameterSpec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
-
-            cipher.init(Cipher.ENCRYPT_MODE, encryptionKey, parameterSpec)
-
-            // Encrypt sensitive fields
-            val encryptedAmount = cipher.doFinal(transaction.amount.toString().toByteArray())
-            val encryptedRecipient = cipher.doFinal(transaction.recipient.toByteArray())
-            val encryptedDescription = transaction.description?.let {
-                cipher.doFinal(it.toByteArray())
-            }
+            // Use a unique nonce per encrypted field to avoid AES-GCM nonce reuse.
+            val amountField = encryptField(transaction.amount.toString())
+            val recipientField = encryptField(transaction.recipient)
+            val descriptionField = transaction.description?.let { encryptField(it) }
 
             EncryptedOfflineTransaction(
                 id = transaction.id,
                 type = transaction.type,
-                encryptedAmount = android.util.Base64.encodeToString(encryptedAmount, android.util.Base64.NO_WRAP),
-                encryptedRecipient = android.util.Base64.encodeToString(encryptedRecipient, android.util.Base64.NO_WRAP),
-                encryptedDescription = encryptedDescription?.let {
-                    android.util.Base64.encodeToString(it, android.util.Base64.NO_WRAP)
-                },
-                iv = android.util.Base64.encodeToString(iv, android.util.Base64.NO_WRAP),
+                encryptedAmount = amountField.ciphertext,
+                encryptedRecipient = recipientField.ciphertext,
+                encryptedDescription = descriptionField?.ciphertext,
+                iv = buildIvBundle(amountField.iv, recipientField.iv, descriptionField?.iv),
                 timestamp = transaction.timestamp,
                 status = transaction.status,
                 retryCount = transaction.retryCount,
@@ -216,17 +233,11 @@ class OfflineTransactionQueue @Inject constructor(
 
     private fun decryptTransaction(encrypted: EncryptedOfflineTransaction): OfflineTransaction {
         return try {
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            val iv = android.util.Base64.decode(encrypted.iv, android.util.Base64.NO_WRAP)
-            val parameterSpec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
-
-            cipher.init(Cipher.DECRYPT_MODE, encryptionKey, parameterSpec)
-
-            // Decrypt sensitive fields
-            val decryptedAmount = String(cipher.doFinal(android.util.Base64.decode(encrypted.encryptedAmount, android.util.Base64.NO_WRAP)))
-            val decryptedRecipient = String(cipher.doFinal(android.util.Base64.decode(encrypted.encryptedRecipient, android.util.Base64.NO_WRAP)))
+            val ivBundle = parseIvBundle(encrypted.iv)
+            val decryptedAmount = decryptField(encrypted.encryptedAmount, ivBundle[IV_KEY_AMOUNT] ?: encrypted.iv)
+            val decryptedRecipient = decryptField(encrypted.encryptedRecipient, ivBundle[IV_KEY_RECIPIENT] ?: encrypted.iv)
             val decryptedDescription = encrypted.encryptedDescription?.let {
-                String(cipher.doFinal(android.util.Base64.decode(it, android.util.Base64.NO_WRAP)))
+                decryptField(it, ivBundle[IV_KEY_DESCRIPTION] ?: encrypted.iv)
             }
 
             OfflineTransaction(
@@ -245,22 +256,90 @@ class OfflineTransactionQueue @Inject constructor(
         }
     }
 
+    private fun encryptField(plainText: String): EncryptedField {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        val ivBytes = ByteArray(GCM_IV_LENGTH)
+        SecureRandom().nextBytes(ivBytes)
+        val parameterSpec = GCMParameterSpec(GCM_TAG_LENGTH, ivBytes)
+        cipher.init(Cipher.ENCRYPT_MODE, encryptionKey, parameterSpec)
+        val encrypted = cipher.doFinal(plainText.toByteArray())
+
+        return EncryptedField(
+            ciphertext = android.util.Base64.encodeToString(encrypted, android.util.Base64.NO_WRAP),
+            iv = android.util.Base64.encodeToString(ivBytes, android.util.Base64.NO_WRAP)
+        )
+    }
+
+    private fun decryptField(ciphertext: String, iv: String): String {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        val ivBytes = android.util.Base64.decode(iv, android.util.Base64.NO_WRAP)
+        val parameterSpec = GCMParameterSpec(GCM_TAG_LENGTH, ivBytes)
+        cipher.init(Cipher.DECRYPT_MODE, encryptionKey, parameterSpec)
+        val encryptedBytes = android.util.Base64.decode(ciphertext, android.util.Base64.NO_WRAP)
+        return String(cipher.doFinal(encryptedBytes))
+    }
+
+    private fun buildIvBundle(amountIv: String, recipientIv: String, descriptionIv: String?): String {
+        return JSONObject()
+            .put(IV_KEY_AMOUNT, amountIv)
+            .put(IV_KEY_RECIPIENT, recipientIv)
+            .put(IV_KEY_DESCRIPTION, descriptionIv ?: JSONObject.NULL)
+            .toString()
+    }
+
+    private fun parseIvBundle(rawIv: String): Map<String, String> {
+        return try {
+            val json = JSONObject(rawIv)
+            buildMap {
+                json.optString(IV_KEY_AMOUNT).takeIf { it.isNotBlank() }?.let { put(IV_KEY_AMOUNT, it) }
+                json.optString(IV_KEY_RECIPIENT).takeIf { it.isNotBlank() }?.let { put(IV_KEY_RECIPIENT, it) }
+                json.optString(IV_KEY_DESCRIPTION).takeIf { it.isNotBlank() && it != "null" }?.let { put(IV_KEY_DESCRIPTION, it) }
+            }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
     private fun getOrCreateEncryptionKey(): SecretKey {
-        // Try to get existing key from secure storage
-        val storedKey = secureStorage.getEncryptionKey(ENCRYPTION_KEY_ALIAS)
-        if (storedKey != null) {
-            return SecretKeySpec(storedKey, "AES")
+        return runCatching { getOrCreateKeystoreKey() }
+            .getOrElse {
+                // Backward-compat fallback for environments where keystore setup fails.
+                val storedKey = secureStorage.getEncryptionKey(ENCRYPTION_KEY_ALIAS)
+                if (storedKey != null) {
+                    return SecretKeySpec(storedKey, "AES")
+                }
+
+                val keyGenerator = KeyGenerator.getInstance("AES")
+                keyGenerator.init(256)
+                val newKey = keyGenerator.generateKey()
+                secureStorage.storeEncryptionKey(ENCRYPTION_KEY_ALIAS, newKey.encoded)
+                newKey
+            }
+    }
+
+    private fun getOrCreateKeystoreKey(): SecretKey {
+        val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        val existing = keyStore.getEntry(ENCRYPTION_KEY_ALIAS, null) as? KeyStore.SecretKeyEntry
+        if (existing != null) {
+            return existing.secretKey
         }
 
-        // Generate new key
-        val keyGenerator = KeyGenerator.getInstance("AES")
-        keyGenerator.init(256)
-        val newKey = keyGenerator.generateKey()
+        val keyGenerator = KeyGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_AES,
+            "AndroidKeyStore"
+        )
+        val spec = KeyGenParameterSpec.Builder(
+            ENCRYPTION_KEY_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setRandomizedEncryptionRequired(true)
+            .setKeySize(256)
+            .build()
 
-        // Store the key securely
-        secureStorage.storeEncryptionKey(ENCRYPTION_KEY_ALIAS, newKey.encoded)
-
-        return newKey
+        keyGenerator.init(spec)
+        return keyGenerator.generateKey()
     }
 
     suspend fun cleanup() {
@@ -271,6 +350,11 @@ class OfflineTransactionQueue @Inject constructor(
         }
     }
 }
+
+private data class EncryptedField(
+    val ciphertext: String,
+    val iv: String
+)
 
 // Data classes
 data class OfflineTransaction(

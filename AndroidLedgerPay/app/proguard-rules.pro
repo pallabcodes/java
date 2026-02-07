@@ -26,7 +26,7 @@
 }
 
 # Security: Obfuscate but keep critical classes readable for debugging
--keepnames class com.example.ledgerpay.core.data.monitoring.Monitoring
+-keepnames class com.example.ledgerpay.core.data.telemetry.Monitoring
 -keepnames class com.example.ledgerpay.feature.auth.vm.AuthViewModel
 -keepnames class com.example.ledgerpay.feature.payments.vm.PaymentsViewModel
 

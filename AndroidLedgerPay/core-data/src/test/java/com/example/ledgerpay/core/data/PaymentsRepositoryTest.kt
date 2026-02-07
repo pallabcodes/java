@@ -2,6 +2,7 @@ package com.example.ledgerpay.core.data
 
 import com.example.ledgerpay.core.data.db.PaymentIntentDao
 import com.example.ledgerpay.core.data.db.PaymentIntentEntity
+import com.example.ledgerpay.core.data.telemetry.Monitoring
 import com.example.ledgerpay.core.network.CreateIntentRequest
 import com.example.ledgerpay.core.network.CreateIntentResponse
 import com.example.ledgerpay.core.network.PaymentsApi
@@ -9,8 +10,10 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -25,13 +28,28 @@ class PaymentsRepositoryTest {
     private lateinit var repository: PaymentsRepository
     private lateinit var mockDao: PaymentIntentDao
     private lateinit var mockApi: PaymentsApi
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = UnconfinedTestDispatcher()
+    private val testMonitoring = object : Monitoring {
+        override fun log(message: String) = Unit
+
+        override fun logUserAction(event: String, attributes: Map<String, Any?>) = Unit
+
+        override fun logSecurityEvent(event: String, attributes: Map<String, Any?>) = Unit
+
+        override fun logPaymentEvent(event: String, paymentId: String?, amount: Long?, currency: String?) = Unit
+
+        override fun logBusinessMetric(name: String, value: Number) = Unit
+
+        override fun logError(error: Throwable, context: String?, userVisible: Boolean) = Unit
+
+        override suspend fun <T> measurePerformance(operation: String, block: suspend () -> T): T = block()
+    }
 
     @Before
     fun setUp() {
         mockDao = mockk()
         mockApi = mockk()
-        repository = PaymentsRepository(mockDao, mockApi, testDispatcher)
+        repository = PaymentsRepository(mockDao, mockApi, testMonitoring, testDispatcher)
     }
 
     @Test
@@ -81,7 +99,7 @@ class PaymentsRepositoryTest {
         val result = repository.createIntent(2_000_000_00L, "USD") // $20,000
         assertTrue(result is PaymentsRepository.Result.Error)
         val error = result as PaymentsRepository.Result.Error
-        assertTrue(error.exception.message?.contains("too large") == true)
+        assertTrue(error.exception.message?.contains("exceeds maximum") == true)
     }
 
     @Test
@@ -90,7 +108,7 @@ class PaymentsRepositoryTest {
         val result = repository.createIntent(1000L, "")
         assertTrue(result is PaymentsRepository.Result.Error)
         val error = result as PaymentsRepository.Result.Error
-        assertTrue(error.exception.message?.contains("required") == true)
+        assertTrue(error.exception.message?.contains("Currency is required") == true)
     }
 
     @Test
@@ -99,16 +117,16 @@ class PaymentsRepositoryTest {
         val result = repository.createIntent(1000L, "US")
         assertTrue(result is PaymentsRepository.Result.Error)
         val error = result as PaymentsRepository.Result.Error
-        assertTrue(error.exception.message?.contains("3 characters") == true)
+        assertTrue(error.exception.message?.contains("Invalid currency format") == true)
     }
 
     @Test
     fun `createIntent validates currency - invalid code throws exception`() = runTest {
         // When & Then
-        val result = repository.createIntent(1000L, "XYZ")
+        val result = repository.createIntent(1000L, "US1")
         assertTrue(result is PaymentsRepository.Result.Error)
         val error = result as PaymentsRepository.Result.Error
-        assertTrue(error.exception.message?.contains("Invalid currency") == true)
+        assertTrue(error.exception.message?.contains("Invalid currency format") == true)
     }
 
     @Test
@@ -128,7 +146,10 @@ class PaymentsRepositoryTest {
     @Test
     fun `createIntent handles HTTP 401 as security error`() = runTest {
         // Given
-        val response = Response.error<CreateIntentResponse>(401, mockk())
+        val response = Response.error<CreateIntentResponse>(
+            401,
+            "{}".toResponseBody("application/json".toMediaType())
+        )
         coEvery { mockApi.createIntent(any()) } throws HttpException(response)
 
         // When
@@ -144,7 +165,10 @@ class PaymentsRepositoryTest {
     @Test
     fun `createIntent handles HTTP 403 as security error`() = runTest {
         // Given
-        val response = Response.error<CreateIntentResponse>(403, mockk())
+        val response = Response.error<CreateIntentResponse>(
+            403,
+            "{}".toResponseBody("application/json".toMediaType())
+        )
         coEvery { mockApi.createIntent(any()) } throws HttpException(response)
 
         // When
@@ -160,7 +184,10 @@ class PaymentsRepositoryTest {
     @Test
     fun `createIntent handles HTTP 429 as rate limit error`() = runTest {
         // Given
-        val response = Response.error<CreateIntentResponse>(429, mockk())
+        val response = Response.error<CreateIntentResponse>(
+            429,
+            "{}".toResponseBody("application/json".toMediaType())
+        )
         coEvery { mockApi.createIntent(any()) } throws HttpException(response)
 
         // When
@@ -175,7 +202,10 @@ class PaymentsRepositoryTest {
     @Test
     fun `createIntent handles server errors gracefully`() = runTest {
         // Given
-        val response = Response.error<CreateIntentResponse>(500, mockk())
+        val response = Response.error<CreateIntentResponse>(
+            500,
+            "{}".toResponseBody("application/json".toMediaType())
+        )
         coEvery { mockApi.createIntent(any()) } throws HttpException(response)
 
         // When
@@ -184,7 +214,7 @@ class PaymentsRepositoryTest {
         // Then
         assertTrue(result is PaymentsRepository.Result.Error)
         val error = result as PaymentsRepository.Result.Error
-        assertEquals("HTTP error: 500", error.exception.message)
+        assertEquals("Server error", error.exception.message)
     }
 
     @Test

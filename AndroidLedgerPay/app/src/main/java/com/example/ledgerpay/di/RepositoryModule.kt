@@ -2,6 +2,7 @@ package com.example.ledgerpay.di
 
 import com.example.ledgerpay.core.data.PaymentsRepository
 import com.example.ledgerpay.core.data.db.PaymentIntentDao
+import com.example.ledgerpay.core.data.telemetry.Monitoring
 import com.example.ledgerpay.core.network.PaymentsApi
 import dagger.Module
 import dagger.Provides
@@ -21,9 +22,10 @@ object RepositoryModule {
     fun providePaymentsRepository(
         dao: PaymentIntentDao,
         api: PaymentsApi,
+        monitoring: Monitoring,
         @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): PaymentsRepository {
-        return PaymentsRepository(dao, api, ioDispatcher)
+        return PaymentsRepository(dao, api, monitoring, ioDispatcher)
     }
 
     @Provides

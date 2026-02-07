@@ -7,7 +7,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ledgerpay.core.data.AuthRepository
-import com.example.ledgerpay.core.data.monitoring.Monitoring
+import com.example.ledgerpay.core.data.telemetry.Monitoring
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow

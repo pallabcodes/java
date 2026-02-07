@@ -26,6 +26,7 @@ firebase-crashlytics = "19.0.3"
 firebase-analytics = "22.0.2"
 google-services = "4.4.2"
 crashlytics-plugin = "3.0.2"
+mockk = "1.13.11"
 
 [libraries]
 android-material = { module = "com.google.android.material:material", version.ref = "material" }
@@ -56,6 +57,7 @@ coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", ve
 androidx-test-ext = { module = "androidx.test.ext:junit", version.ref = "androidx-test-ext" }
 espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
 androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 
 # Production Grade additions
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
@@ -66,12 +68,10 @@ firebase-analytics = { module = "com.google.firebase:firebase-analytics", versio
 [plugins]
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version = "12.1.1" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version = "1.23.6" }
-jacoco = { id = "org.gradle.jacoco", version = "3.3.0" }
+jacoco = { id = "org.gradle.jacoco" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 google-services = { id = "com.google.gms.google-services", version.ref = "google-services" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlytics-plugin" }
-
-androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }

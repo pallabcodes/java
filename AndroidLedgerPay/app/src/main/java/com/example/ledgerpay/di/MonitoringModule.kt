@@ -1,7 +1,7 @@
 package com.example.ledgerpay.di
 
-import com.example.ledgerpay.core.data.monitoring.Monitoring
-import com.example.ledgerpay.monitoring.AppMonitoring
+import com.example.ledgerpay.core.data.telemetry.Monitoring
+import com.example.ledgerpay.telemetry.AppMonitoring
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

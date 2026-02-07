@@ -2,11 +2,28 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.hilt.android)
-    alias(libs.plugins.jacoco)
+    id("jacoco")
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
     kotlin("kapt")
 }
+
+fun toBuildConfigString(value: String): String {
+    val escaped = value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+    return "\"$escaped\""
+}
+
+val releasePrimaryPinProvider = providers.gradleProperty("LEDGERPAY_PIN_PRIMARY")
+    .orElse(providers.environmentVariable("LEDGERPAY_PIN_PRIMARY"))
+    .map { it.trim() }
+    .orElse("")
+
+val releaseBackupPinProvider = providers.gradleProperty("LEDGERPAY_PIN_BACKUP")
+    .orElse(providers.environmentVariable("LEDGERPAY_PIN_BACKUP"))
+    .map { it.trim() }
+    .orElse("")
 
 android {
     compileOptions {
@@ -15,12 +32,7 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
-        // Performance optimizations
-        freeCompilerArgs += listOf(
-            "-Xopt-in=kotlin.RequiresOptIn",
-            "-Xjvm-default=all",
-            "-Xinline-classes"
-        )
+        freeCompilerArgs += listOf("-Xjvm-default=all")
     }
     namespace = "com.example.ledgerpay"
     compileSdk = 34
@@ -39,29 +51,15 @@ android {
         )
     }
 
-    flavorDimensions += "environment"
-    productFlavors {
-        create("dev") {
-            dimension = "environment"
-            applicationIdSuffix = ".dev"
-            versionNameSuffix = "-dev"
-        }
-        create("prod") {
-            dimension = "environment"
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
 
-            // Performance: Enable R8 full mode
-            optimization {
-                isShrinkResources = true
-            }
-
+            buildConfigField("String", "API_BASE_URL", "\"https://api.ledgerpay.com/\"")
+            buildConfigField("String", "LEDGERPAY_PIN_PRIMARY", toBuildConfigString(releasePrimaryPinProvider.get()))
+            buildConfigField("String", "LEDGERPAY_PIN_BACKUP", toBuildConfigString(releaseBackupPinProvider.get()))
             buildConfigField("boolean", "PERFORMANCE_MONITORING_ENABLED", "false")
             buildConfigField("boolean", "DEBUG_NETWORK_ENABLED", "false")
         }
@@ -69,6 +67,9 @@ android {
             isMinifyEnabled = false
             isShrinkResources = false
 
+            buildConfigField("String", "API_BASE_URL", "\"https://api-dev.ledgerpay.com/\"")
+            buildConfigField("String", "LEDGERPAY_PIN_PRIMARY", "\"\"")
+            buildConfigField("String", "LEDGERPAY_PIN_BACKUP", "\"\"")
             buildConfigField("boolean", "PERFORMANCE_MONITORING_ENABLED", "true")
             buildConfigField("boolean", "DEBUG_NETWORK_ENABLED", "true")
         }
@@ -98,12 +99,17 @@ android {
             "META-INF/*.kotlin_module"
         )
     }
+}
 
-    // Performance: Optimize dexing
-    dexOptions {
-        maxProcessCount = Runtime.getRuntime().availableProcessors()
-        javaMaxHeapSize = "4g"
-        preDexLibraries = true
+val releaseTasksRequested = gradle.startParameter.taskNames.any { task ->
+    task.contains("release", ignoreCase = true)
+}
+if (releaseTasksRequested) {
+    check(releasePrimaryPinProvider.get().isNotBlank()) {
+        "Missing LEDGERPAY_PIN_PRIMARY. Set via -PLEDGERPAY_PIN_PRIMARY or env var."
+    }
+    check(releaseBackupPinProvider.get().isNotBlank()) {
+        "Missing LEDGERPAY_PIN_BACKUP. Set via -PLEDGERPAY_PIN_BACKUP or env var."
     }
 }
 
@@ -123,16 +129,21 @@ dependencies {
 
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
+    implementation("androidx.hilt:hilt-work:1.2.0")
+    kapt("androidx.hilt:hilt-compiler:1.2.0")
     implementation(libs.hilt.nav.compose)
     implementation(libs.timber)
+    implementation(libs.room.runtime)
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 
     // Production Grade: Observability & Performance
-    implementation(platform(libs.firebase.crashlytics)) // Managed by plugin usually, checking bom usage is better but plugin handles versioning often if bom not used. Actually plugin manages the upload.
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.analytics)
     debugImplementation(libs.leakcanary.android)
 
     implementation(project(":core-ui"))
+    implementation(project(":core-data"))
+    implementation(project(":core-network"))
     implementation(project(":feature-payments"))
     implementation(project(":feature-ledger"))
 
@@ -150,7 +161,7 @@ kapt { correctErrorTypes = true }
 android {
     buildTypes {
         getByName("debug") {
-            isTestCoverageEnabled = true
+            enableUnitTestCoverage = true
         }
     }
 }

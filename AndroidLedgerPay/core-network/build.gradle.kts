@@ -22,6 +22,8 @@ dependencies {
     api(libs.okhttp.logging)
     api(libs.moshi)
     api(libs.retrofit.converter.moshi)
+    implementation(libs.hilt.android)
 
+    testImplementation(kotlin("test"))
     testImplementation(libs.junit4)
 }

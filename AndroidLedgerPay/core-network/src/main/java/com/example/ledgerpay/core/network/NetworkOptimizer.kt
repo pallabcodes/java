@@ -4,8 +4,10 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
+import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.Interceptor
 import okhttp3.Response
+import okio.buffer
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -13,7 +15,7 @@ import javax.inject.Singleton
 
 @Singleton
 class NetworkOptimizer @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) {
 
     companion object {
@@ -79,9 +81,9 @@ class NetworkOptimizer @Inject constructor(
             .tag(TimeoutConfig(connectTimeout, readTimeout, writeTimeout))
             .build()
 
-        chain.withConnectTimeout(connectTimeout, TimeUnit.MILLISECONDS)
-            .withReadTimeout(readTimeout, TimeUnit.MILLISECONDS)
-            .withWriteTimeout(writeTimeout, TimeUnit.MILLISECONDS)
+        chain.withConnectTimeout(connectTimeout.toInt(), TimeUnit.MILLISECONDS)
+            .withReadTimeout(readTimeout.toInt(), TimeUnit.MILLISECONDS)
+            .withWriteTimeout(writeTimeout.toInt(), TimeUnit.MILLISECONDS)
             .proceed(adaptedRequest)
     }
 
@@ -129,13 +131,15 @@ class NetworkOptimizer @Inject constructor(
     )
 
     // DNS optimization
-    val dnsOptimizer = okhttp3.Dns { hostname ->
-        try {
-            // Use system DNS resolution with caching
-            java.net.InetAddress.getAllByName(hostname).toList()
-        } catch (e: Exception) {
-            // Fallback to default DNS
-            okhttp3.Dns.SYSTEM.lookup(hostname)
+    val dnsOptimizer = object : okhttp3.Dns {
+        override fun lookup(hostname: String): List<java.net.InetAddress> {
+            return try {
+                // Use system DNS resolution with caching
+                java.net.InetAddress.getAllByName(hostname).toList()
+            } catch (e: Exception) {
+                // Fallback to default DNS
+                okhttp3.Dns.SYSTEM.lookup(hostname)
+            }
         }
     }
 

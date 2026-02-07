@@ -1,10 +1,12 @@
 package com.example.ledgerpay.core.data
 
 import com.example.ledgerpay.core.data.prefs.SecureStorage
+import com.example.ledgerpay.core.network.LoginResponse
 import com.example.ledgerpay.core.network.PaymentsApi
 import io.mockk.coEvery
-import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -29,7 +31,7 @@ class AuthRepositoryTest {
         // Given
         val email = "test@example.com"
         val password = "password123"
-        val expectedResponse = PaymentsApi.LoginResponse(
+        val expectedResponse = LoginResponse(
             userId = "user123",
             email = email,
             token = "jwt.token.here"
@@ -48,8 +50,8 @@ class AuthRepositoryTest {
         assertEquals(email, session.email)
         assertEquals("jwt.token.here", session.token)
 
-        coVerify { mockSecureStorage.saveAuthToken("jwt.token.here") }
-        coVerify { mockSecureStorage.saveUserId("user123") }
+        verify { mockSecureStorage.saveAuthToken("jwt.token.here") }
+        verify { mockSecureStorage.saveUserId("user123") }
     }
 
     @Test
@@ -73,8 +75,8 @@ class AuthRepositoryTest {
     @Test
     fun `checkSession with valid token should return session`() = runTest {
         // Given
-        coEvery { mockSecureStorage.getAuthToken() } returns "valid.jwt.token"
-        coEvery { mockSecureStorage.getUserId() } returns "user123"
+        every { mockSecureStorage.getAuthToken() } returns "valid.jwt.token"
+        every { mockSecureStorage.getUserId() } returns "user123"
 
         // When
         val result = authRepository.checkSession()
@@ -89,8 +91,8 @@ class AuthRepositoryTest {
     @Test
     fun `checkSession with missing token should return error`() = runTest {
         // Given
-        coEvery { mockSecureStorage.getAuthToken() } returns null
-        coEvery { mockSecureStorage.getUserId() } returns "user123"
+        every { mockSecureStorage.getAuthToken() } returns null
+        every { mockSecureStorage.getUserId() } returns "user123"
 
         // When
         val result = authRepository.checkSession()
@@ -107,15 +109,15 @@ class AuthRepositoryTest {
         authRepository.logout()
 
         // Then
-        coVerify { mockSecureStorage.clearAuthToken() }
-        coVerify { mockSecureStorage.clearAll() }
+        verify { mockSecureStorage.clearAuthToken() }
+        verify { mockSecureStorage.clearAll() }
     }
 
     @Test
     fun `isLoggedIn returns true when both token and userId exist`() {
         // Given
-        coEvery { mockSecureStorage.getAuthToken() } returns "token"
-        coEvery { mockSecureStorage.getUserId() } returns "user123"
+        every { mockSecureStorage.getAuthToken() } returns "token"
+        every { mockSecureStorage.getUserId() } returns "user123"
 
         // When & Then
         assertTrue(authRepository.isLoggedIn())

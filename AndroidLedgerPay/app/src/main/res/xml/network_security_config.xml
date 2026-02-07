@@ -10,10 +10,9 @@
     <!-- Security: Domain-specific configuration for Stripe -->
     <domain-config>
         <domain includeSubdomains="true">api.stripe.com</domain>
-        <pin-set expiration="2025-12-31">
+        <pin-set expiration="2027-12-31">
             <!-- Security: Certificate pinning for Stripe API with rotation -->
             <pin digest="SHA-256">4y/HZzNGpAX5X0dGL2hI9sE3XGQz6wK8kEb9zTQ6QK8=</pin> <!-- Primary pin -->
-            <pin digest="SHA-256">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</pin> <!-- Backup pin for rotation -->
         </pin-set>
         <trust-anchors>
             <certificates src="system" />
@@ -23,11 +22,6 @@
     <!-- Security: Domain-specific configuration for LedgerPay API -->
     <domain-config>
         <domain includeSubdomains="true">api.ledgerpay.com</domain>
-        <pin-set expiration="2025-12-31">
-            <!-- Security: Certificate pinning for LedgerPay API -->
-            <pin digest="SHA-256">CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=</pin> <!-- Primary pin -->
-            <pin digest="SHA-256">DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD=</pin> <!-- Backup pin for rotation -->
-        </pin-set>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

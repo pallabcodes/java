@@ -8,7 +8,10 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class PaymentIntentDaoTest {
     private lateinit var db: AppDatabase
     private lateinit var dao: PaymentIntentDao
@@ -16,7 +19,9 @@ class PaymentIntentDaoTest {
     @Before
     fun setup() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
+        db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
         dao = db.paymentIntentDao()
     }
 
@@ -28,7 +33,7 @@ class PaymentIntentDaoTest {
         val e = PaymentIntentEntity("pi_test", 1000, "USD", "succeeded")
         dao.upsert(e)
         val found = dao.find("pi_test")
-        assertEquals(1000, found?.amountMinor)
+        assertEquals(1000L, found?.amountMinor)
         assertEquals("USD", found?.currency)
         val list = dao.list()
         assertEquals(1, list.size)

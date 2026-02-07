@@ -1,7 +1,5 @@
 package com.example.ledgerpay
 
-import android.app.ActivityManager
-import android.content.Context
 import android.os.Bundle
 import android.os.StrictMode
 import android.util.Log
@@ -273,18 +271,4 @@ class PerformanceMonitor {
             Log.d("PerformanceMonitor", "Memory usage: ${usedMemory / 1024 / 1024}MB (${usedPercent}%)")
         }
     }
-}
-
-@Composable
-fun LedgerPayAppRoot() {
-    Surface(color = MaterialTheme.colorScheme.background) {
-        val cnt = remember { mutableStateOf(0) }
-        PrimaryButton(text = "Increment") { cnt.value++ }
-    }
-}
-
-@Preview
-@Composable
-fun PreviewLedgerPay() {
-    LedgerPayAppRoot()
 }

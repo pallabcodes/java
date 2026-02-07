@@ -1,6 +1,7 @@
 package com.example.ledgerpay.core.data
 
 import com.example.ledgerpay.core.data.prefs.SecureStorage
+import com.example.ledgerpay.core.network.LoginRequest
 import com.example.ledgerpay.core.network.PaymentsApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,8 +15,6 @@ class AuthRepository @Inject constructor(
 ) {
 
     data class UserSession(val userId: String, val email: String, val token: String)
-    data class LoginRequest(val email: String, val password: String)
-    data class LoginResponse(val userId: String, val email: String, val token: String)
 
     sealed class Result<T> {
         data class Success<T>(val data: T) : Result<T>()

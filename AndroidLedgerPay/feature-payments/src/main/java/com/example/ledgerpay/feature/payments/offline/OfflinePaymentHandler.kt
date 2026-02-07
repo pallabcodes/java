@@ -127,7 +127,10 @@ class OfflinePaymentHandler @Inject constructor(
                     // Update transaction statuses for failed transactions
                     result.failedTransactionIds.forEach { transactionId ->
                         viewModelScope.launch {
-                            transactionQueue.updateTransactionStatus(transactionId, TransactionStatus.FAILED)
+                            transactionQueue.updateTransactionStatus(
+                                transactionId,
+                                com.example.ledgerpay.core.data.offline.TransactionStatus.FAILED
+                            )
                         }
                     }
                 },
