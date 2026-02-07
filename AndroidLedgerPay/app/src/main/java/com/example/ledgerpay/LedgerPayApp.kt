@@ -15,10 +15,12 @@ class LedgerPayApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Initialize monitoring/logging system
-        monitoring
+        // Initialize Logging
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
 
-        // Log app startup
-        Timber.i("LedgerPay Application started")
+        // Log app startup using monitoring abstraction
+        monitoring.log("LedgerPay Application started")
     }
 }

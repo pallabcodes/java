@@ -78,6 +78,22 @@ class SecureStorage @Inject constructor(
         sharedPreferences.edit().clear().apply()
     }
 
+    fun storeEncryptionKey(alias: String, key: ByteArray) {
+        val encodedKey = android.util.Base64.encodeToString(key, android.util.Base64.NO_WRAP)
+        sharedPreferences.edit()
+            .putString("enc_key_$alias", encodedKey)
+            .apply()
+    }
+
+    fun getEncryptionKey(alias: String): ByteArray? {
+        val encodedKey = sharedPreferences.getString("enc_key_$alias", null) ?: return null
+        return try {
+            android.util.Base64.decode(encodedKey, android.util.Base64.NO_WRAP)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     companion object {
         private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_TOKEN_TIMESTAMP = "token_timestamp"

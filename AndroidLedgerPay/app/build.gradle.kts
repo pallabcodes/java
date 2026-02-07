@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.jacoco)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
     kotlin("kapt")
 }
 
@@ -35,6 +37,18 @@ android {
         javaCompileOptions.annotationProcessorOptions.arguments += mapOf(
             "room.incremental" to "true"
         )
+    }
+
+    flavorDimensions += "environment"
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+        }
+        create("prod") {
+            dimension = "environment"
+        }
     }
 
     buildTypes {
@@ -111,6 +125,12 @@ dependencies {
     kapt(libs.hilt.compiler)
     implementation(libs.hilt.nav.compose)
     implementation(libs.timber)
+
+    // Production Grade: Observability & Performance
+    implementation(platform(libs.firebase.crashlytics)) // Managed by plugin usually, checking bom usage is better but plugin handles versioning often if bom not used. Actually plugin manages the upload.
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics)
+    debugImplementation(libs.leakcanary.android)
 
     implementation(project(":core-ui"))
     implementation(project(":feature-payments"))
