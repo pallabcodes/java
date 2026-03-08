@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package sample.v1;
+
+option java_multiple_files = true;
+option java_package = "com.yourorg.platform.hexagonal.adapter.in.grpc";
+option java_outer_classname = "SampleProto";
+
+service SampleService {
+  rpc CreateSample (CreateSampleRequest) returns (SampleResponse);
+  rpc GetSample (GetSampleRequest) returns (SampleResponse);
+}
+
+message CreateSampleRequest {
+  string name = 1;
+}
+
+message GetSampleRequest {
+  string id = 1;
+}
+
+message SampleResponse {
+  string id = 1;
+  string name = 2;
+  string status = 3;
+  string created_at = 4;
+}

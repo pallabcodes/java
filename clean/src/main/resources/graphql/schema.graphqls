@@ -1,0 +1,18 @@
+type Query {
+  sample(id: ID!): Sample
+}
+
+type Mutation {
+  createSample(input: CreateSampleInput!): Sample
+}
+
+type Sample {
+  id: ID!
+  name: String!
+  status: String!
+  createdAt: String!
+}
+
+input CreateSampleInput {
+  name: String!
+}

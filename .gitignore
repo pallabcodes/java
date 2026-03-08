@@ -1,0 +1,27 @@
+# IDEs and Editors
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+out/
+
+# OS Specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build and Artifacts
+**/build/
+**/bin/
+**/target/
+.gradle/
+build/
+bin/
+
+# Environment and Logs
+*.env
+.env
+.env.local
+*.log
+logs/

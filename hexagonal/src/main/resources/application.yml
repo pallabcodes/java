@@ -1,0 +1,82 @@
+spring:
+  application:
+    name: hexagonal-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/app
+    username: app
+    password: app
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/app
+  redis:
+    host: localhost
+    port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
+  rabbitmq:
+    host: localhost
+    port: 5672
+  graphql:
+    graphiql:
+      enabled: true
+
+server:
+  port: 8080
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name},%X{traceId:-},%X{spanId:-}]"
+
+app:
+  persistence:
+    mode: jpa
+  aws:
+    region: us-east-1
+    endpoint: http://localhost:4566
+    sqs:
+      queue-url: http://localhost:4566/000000000000/sample-queue
+    sns:
+      topic-arn: arn:aws:sns:us-east-1:000000000000:sample-topic
+    dynamodb:
+      table-name: sample_table
+    s3:
+      bucket: sample-bucket
+  messaging:
+    mode: kafka
+    kafka:
+      topic: sample-events
+    rabbit:
+      exchange: sample-exchange
+      routing-key: sample.key
+  outbox:
+    polling-enabled: false
+    poll-interval-ms: 5000
+    batch-size: 100
+  cache:
+    enabled: false
+  storage:
+    mode: s3
