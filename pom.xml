@@ -22,8 +22,10 @@
     </properties>
 
     <modules>
-        <module>NetflixMathLibrary</module>
-        <module>DesignPatterns</module>
+        <module>modules/patterns</module>
+        <module>modules/netflix-math</module>
+        <module>modules/functional</module>
+        <module>modules/core</module>
     </modules>
 
     <dependencies>
@@ -53,6 +55,12 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
         
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        
         <!-- Database -->
         <dependency>
             <groupId>com.h2database</groupId>
@@ -75,11 +83,15 @@
     </dependencies>
     
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
             
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -88,6 +100,12 @@
                 <configuration>
                     <source>21</source>
                     <target>21</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>
