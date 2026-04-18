@@ -8,7 +8,7 @@ public class BuilderDemo {
         System.out.println("=== L5 Builder Pattern Demo (Java 21 Records) ===");
 
         // 1. Using the fluent builder to create a complex object
-        User user = User.builder("USR-001", "John Doe")
+        Step01_User user = Step01_User.builder("USR-001", "John Doe")
                 .email("john.doe@google.com")
                 .role("ADMIN")
                 .addPermission("READ")
@@ -35,7 +35,7 @@ public class BuilderDemo {
         // 3. VALIDATION DEMO
         System.out.println("\n--- Testing Strict Validation ---");
         try {
-            User.builder("USR-002", "Jane Smith")
+            Step01_User.builder("USR-002", "Jane Smith")
                 .email("invalid-email-format")
                 .build();
         } catch (IllegalArgumentException e) {
