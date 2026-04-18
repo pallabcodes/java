@@ -9,6 +9,14 @@ public class User {
         this.name = name;
     }
 
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
     @Override
     public String toString() {
         return "User{id='" + id + "', name='" + name + "'}";

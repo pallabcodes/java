@@ -1,6 +1,9 @@
 package com.backend.designpatterns.creational.factory;
 
-// Role: Concrete Product
+// Role: Concrete Implementations of  Product
+
+// Depend on the StorageConfig to initialize (Local needs a path).
+// N.B: They are totally unaware of the Factory. This keeps them "pure" and easily testable.
 public class LocalStorage implements Storage {
     private final StorageConfig config;
 
