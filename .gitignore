@@ -73,3 +73,7 @@ tmp/
 flamegraph.svg
 async-profiler/
 .attach_pid*
+jmh-result.json
+benchmarks.jar
+**/target/generated-sources/annotations
+**/target/generated-test-sources/test-annotations

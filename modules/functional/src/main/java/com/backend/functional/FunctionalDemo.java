@@ -1,21 +1,16 @@
 package com.backend.functional;
 
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
 /**
  * L5 Google-Grade Functional Programming Demo
  */
-@SpringBootApplication
-public class FunctionalDemo implements CommandLineRunner {
+public class FunctionalDemo {
 
     public static void main(String[] args) {
-        SpringApplication.run(FunctionalDemo.class, args);
+        FunctionalDemo demo = new FunctionalDemo();
+        demo.run();
     }
 
-    @Override
-    public void run(String... args) {
+    public void run() {
         System.out.println("\n--- STARTING L5 FUNCTIONAL PROGRAMMING DEMO ---\n");
 
         Step01_PureFunctions.main(null);

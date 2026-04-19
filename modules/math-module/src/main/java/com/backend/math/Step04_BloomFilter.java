@@ -1,7 +1,6 @@
 package com.backend.math;
 
 import java.util.BitSet;
-import java.util.function.Function;
 
 /**
  * Step 04: Space-Efficient Indexing (Bloom Filter)

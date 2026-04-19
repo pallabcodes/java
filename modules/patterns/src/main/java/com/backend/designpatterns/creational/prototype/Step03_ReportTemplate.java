@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
  */
 public class Step03_ReportTemplate implements Step01_Prototype<Step03_ReportTemplate> {
     private final String templateName;
+    @SuppressWarnings("unused")
     private final LocalDateTime lastUpdated;
     private List<Step02_ReportSection> sections;
 
