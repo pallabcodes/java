@@ -4,11 +4,11 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Step 3: THE PUBLISHER (Event Bus)
+ * Step 3: THE PUBLISHER (Subject)
  * 
  * Manages the registry of Subscriptions dynamically.
  */
-public class Step03_GoogleDocsEventBus {
+public class Step03_DocumentSubject {
 
     private final List<Step02_DocumentSubscriber> subscribers = new CopyOnWriteArrayList<>();
 
