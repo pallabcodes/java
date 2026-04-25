@@ -5,7 +5,7 @@ package com.backend.lowlevel;
  */
 public class LowLevelDemo {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Throwable {
         System.out.println("\n--- STARTING L7 LOW-LEVEL JAVA MASTERY DEMO (FULL MASTERY) ---\n");
 
         Step01_MemoryLayout.main(null);
@@ -44,6 +44,9 @@ public class LowLevelDemo {
         System.out.println();
 
         Step11_JMM_DeepDive.main(null);
+        System.out.println();
+
+        Step14_VirtualThreadDiagnostics.main(null);
 
         System.out.println("\n--- L7 LOW-LEVEL JAVA MASTERY DEMO COMPLETE ---");
     }

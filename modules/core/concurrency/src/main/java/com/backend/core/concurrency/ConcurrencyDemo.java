@@ -20,6 +20,16 @@ public class ConcurrencyDemo {
         System.out.println(">>> EXECUTING STEP 03: MEMORY PRESSURE & CONTENTION");
         Step03_MemoryPressureAndContention.main(args);
 
+        System.out.println("\n---------------------------------------------------------\n");
+
+        System.out.println(">>> EXECUTING STEP 04: STRUCTURED CONCURRENCY");
+        Step04_StructuredConcurrency.main(args);
+
+        System.out.println("\n---------------------------------------------------------\n");
+
+        System.out.println(">>> EXECUTING STEP 05: SCOPED VALUES");
+        Step05_ScopedValues.main(args);
+
         System.out.println("\n=========================================================");
         System.out.println("=== END OF L7 CONCURRENCY & MEMORY MASTERY            ===");
         System.out.println("=========================================================");

@@ -8,7 +8,7 @@ import java.util.ServiceLoader;
  * L7 Principles:
  * 1. Modular Evolution: Adding functionality at runtime without modifying core code.
  * 2. Inversion of Control: The core defines the service; the plugin provides the implementation.
- * 3. Discovery: Using 'ServiceLoader' to dynamically find implementations in the classpath.
+ * 3. Dynamic Discovery: Using 'ServiceLoader' and 'META-INF/services'.
  */
 public class Step10_PluginSPI {
 
@@ -18,26 +18,32 @@ public class Step10_PluginSPI {
         String getProcessorName();
     }
 
-    // A concrete implementation (Mock Plugin)
+    // A concrete implementation (Registered in META-INF/services)
     public static class JsonProcessor implements PayloadProcessor {
+        public JsonProcessor() {} // Required by ServiceLoader
         @Override public String process(byte[] data) { return "{ \"status\": \"processed\" }"; }
-        @Override public String getProcessorName() { return "JSON_PLUGIN"; }
+        @Override public String getProcessorName() { return "JSON_PLUGIN (True SPI)"; }
     }
 
     public static void main(String[] args) {
-        System.out.println("=== Step 10: Plugin Architecture (SPI Mastery) ===");
+        System.out.println("=== Step 10: Plugin Architecture (True SPI Discovery) ===");
 
-        // In a real L7 system, these would be loaded from external JARs via ServiceLoader.
-        // For the demo, we use the ServiceLoader API simulation.
+        // In a real system, the ServiceLoader would look for JARs in the classpath
         ServiceLoader<PayloadProcessor> loader = ServiceLoader.load(PayloadProcessor.class);
 
-        System.out.println("Scanning for Payload Processors...");
+        System.out.println("Scanning for registered Payload Processors...");
         
-        // Manual simulation of registry discovery
-        PayloadProcessor defaultProcessor = new JsonProcessor();
-        System.out.println("Found Processor: " + defaultProcessor.getProcessorName());
-        System.out.println("Sample Output: " + defaultProcessor.process(new byte[0]));
+        boolean found = false;
+        for (PayloadProcessor processor : loader) {
+            System.out.println("Found via SPI: " + processor.getProcessorName());
+            System.out.println("Process Output: " + processor.process(new byte[0]));
+            found = true;
+        }
 
-        System.out.println("\nL5 Insight: ServiceLoader is the mechanism behind JDBC driver discovery and advanced JAR-based plugin systems.");
+        if (!found) {
+            System.out.println("⚠️ No processors found. Ensure META-INF/services is configured.");
+        }
+
+        System.out.println("\nL7 Mastery: This pattern is used by JDBC, JNDI, and the Java Compiler itself.");
     }
 }

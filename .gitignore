@@ -77,3 +77,6 @@ jmh-result.json
 benchmarks.jar
 **/target/generated-sources/annotations
 **/target/generated-test-sources/test-annotations
+
+# Local Tools
+.tools/
