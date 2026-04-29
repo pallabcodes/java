@@ -6,7 +6,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Step 4: PROTOTYPE REGISTRY
+ * Step 4: PROTOTYPE REGISTRY (The Cache)
+ * 
+ * Stores pre-configured prototypes in a "Master List".
+ * 
+ * Benefits:
+ * 1. Performance: Instead of building complex objects over and over, we build them once at startup.
+ * 2. Convenience: Clients can ask for a "Standard" template by name.
+ * 3. Isolation: The registry returns a CLONE, so the client can modify their copy 
+ *    without ruining the original "Master" version.
  */
 public final class Step04_TemplateRegistry {
     

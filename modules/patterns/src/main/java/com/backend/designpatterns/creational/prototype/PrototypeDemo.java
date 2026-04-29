@@ -1,5 +1,16 @@
 package com.backend.designpatterns.creational.prototype;
 
+/**
+ * THE PROTOTYPE DEMO
+ * 
+ * Demonstrates how to create new objects by copying existing ones.
+ * 
+ * Key takeaways:
+ * 1. Deep Copying: We prove that modifying a clone does NOT affect the original "Master" template.
+ * 2. Registry Usage: We fetch a pre-configured report template by name and clone it.
+ * 3. Efficiency: We avoid complex initialization logic by simply copying a finished object.
+ */
+
 public class PrototypeDemo {
 
     public static void main(String[] args) {

@@ -1,5 +1,15 @@
 package com.backend.designpatterns.creational.factory;
-
+ 
+/**
+ * THE GRAND FINALE - Factory Pattern Demo
+ * 
+ * This class brings everything together:
+ * 1. Bootstrapping: Registering recipes in the factory.
+ * 2. Configuration: Using records for clean data.
+ * 3. Consumption: Using the factory to create objects.
+ * 4. Lifecycles: Demonstrating Prototype (new) vs Singleton (cached) behavior.
+ * 5. Extensibility: Showing how to plug in new code without changing existing logic.
+ */
 public class FactoryDemo {
 
     public static void main(String[] args) {

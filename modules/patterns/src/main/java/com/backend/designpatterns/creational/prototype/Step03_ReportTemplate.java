@@ -6,6 +6,15 @@ import java.util.stream.Collectors;
 
 /**
  * Step 3: THE COMPLEX PROTOTYPE (Deep Copying)
+ * 
+ * A full report template containing multiple sections.
+ * 
+ * Why Deep Copying?
+ * If we just copied the list reference, changing a section in the clone 
+ * would also change it in the original.
+ * 
+ * Solution: When we clone the template, we also call .copy() on every 
+ * individual section inside it.
  */
 public class Step03_ReportTemplate implements Step01_Prototype<Step03_ReportTemplate> {
     private final String templateName;

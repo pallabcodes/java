@@ -2,6 +2,9 @@ package com.backend.designpatterns.creational.abstractfactory;
 
 /**
  * Step 4: CONCRETE PRODUCT A (Cloud)
+ * 
+ * Part of the "AWS" family. 
+ * Implements storage by uploading to Amazon S3.
  */
 public class Step04_S3Storage implements Step01_Storage {
     @Override

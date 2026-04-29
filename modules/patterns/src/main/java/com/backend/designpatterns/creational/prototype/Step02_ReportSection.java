@@ -1,7 +1,11 @@
 package com.backend.designpatterns.creational.prototype;
 
 /**
- * Step 2: HIERARCHICAL COMPONENT
+ * Step 2: CONCRETE PROTOTYPE (Simple Component)
+ * 
+ * A part of a report that can be copied. 
+ * Note that cloning is useful when creating a new object from scratch 
+ * is more expensive or complex than copying an existing one.
  */
 public class Step02_ReportSection implements Step01_Prototype<Step02_ReportSection> {
     private String title;

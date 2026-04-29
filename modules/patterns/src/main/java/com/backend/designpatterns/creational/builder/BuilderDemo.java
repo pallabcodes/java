@@ -1,5 +1,16 @@
 package com.backend.designpatterns.creational.builder;
 
+/**
+ * THE BUILDER DEMO
+ * 
+ * Shows how to use the Builder pattern to create a "Step01_User".
+ * 
+ * Key takeaways:
+ * 1. Readability: Chaining methods looks like a sentence (Fluent API).
+ * 2. Safety: The final object is IMMUTABLE and cannot be modified once built.
+ * 3. Validation: Errors are caught during the .build() phase, not when setting values.
+ */
+
 import java.util.List;
 
 public class BuilderDemo {

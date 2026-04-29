@@ -2,6 +2,9 @@ package com.backend.designpatterns.creational.factory;
 
 /**
  * Step 3: CONCRETE PRODUCT (Local)
+ * 
+ * This is a real implementation of the Storage interface.
+ * It contains the specific logic for saving files to the Local File System.
  */
 public class Step03_LocalStorage implements Step01_Storage {
     private final Step05_StorageConfig config;

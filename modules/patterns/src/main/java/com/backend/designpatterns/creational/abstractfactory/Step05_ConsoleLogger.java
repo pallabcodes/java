@@ -2,6 +2,9 @@ package com.backend.designpatterns.creational.abstractfactory;
 
 /**
  * Step 5: CONCRETE PRODUCT B (Local)
+ * 
+ * Part of the "Local" family. 
+ * Implements logging by printing to the standard console.
  */
 public class Step05_ConsoleLogger implements Step02_AuditLogger {
     @Override

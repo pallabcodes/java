@@ -2,6 +2,9 @@ package com.backend.designpatterns.creational.factory;
 
 /**
  * Step 4: CONCRETE PRODUCT (Cloud)
+ * 
+ * This is another implementation of the Storage interface.
+ * It contains logic for interacting with AWS S3.
  */
 public class Step04_S3Storage implements Step01_Storage {
     private final Step05_StorageConfig config;
